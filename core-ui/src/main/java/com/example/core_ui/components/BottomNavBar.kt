@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
@@ -50,19 +53,19 @@ import androidx.navigation.compose.rememberNavController
 import com.example.core_ui.theme.Black
 import com.example.core_ui.theme.Grey
 
-
 data class BottomNavItem(
     val label: String,
     val icon: ImageVector,
-    val route: String
+    val route: String,
+    val isSpecial: Boolean = false // ✅ 用来标记特殊按钮
 )
 
 @Composable
 fun BottomNavBar(navController: NavController, modifier: Modifier = Modifier) {
     val bottomNavItemList = listOf(
         BottomNavItem("Home", Icons.Default.Home, "home"),
+        BottomNavItem("Scan", Icons.Default.QrCodeScanner, "scan", isSpecial = true), // ✅ 特殊按钮
         BottomNavItem("Profile", Icons.Default.Person, "profile"),
-        BottomNavItem("Setting", Icons.Default.Settings, "setting")
     )
 
     NavigationBar(
@@ -100,29 +103,47 @@ fun NavigationBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 自动状态管理 - 自动监听路由变化
             val currentDestination by navController.currentBackStackEntryAsState()
 
             items.forEach { item ->
                 val isSelected = currentDestination?.destination?.route == item.route
 
-                NavigationBarButton(
-                    item = item,
-                    isSelected = isSelected,
-                    onClick = {
-                        // 自动导航逻辑 - 统一的导航处理
-                        if (currentDestination?.destination?.route != item.route) {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                if (item.isSpecial) {
+                    // ✅ 凸起的特殊按钮
+                    SpecialNavButton(
+                        item = item,
+                        isSelected = isSelected,
+                        onClick = {
+                            if (currentDestination?.destination?.route != item.route) {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    NavigationBarButton(
+                        item = item,
+                        isSelected = isSelected,
+                        onClick = {
+                            if (currentDestination?.destination?.route != item.route) {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }
@@ -135,7 +156,6 @@ fun NavigationBarButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 预设样式和动画 - 颜色动画过渡
     val animatedIconColor by animateColorAsState(
         targetValue = if (isSelected) Black else Grey,
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
@@ -148,7 +168,6 @@ fun NavigationBarButton(
         label = "text_color_animation"
     )
 
-    // 缩放动画效果
     val animatedScale by animateFloatAsState(
         targetValue = if (isSelected) 1.10f else 1f,
         animationSpec = spring(
@@ -161,10 +180,9 @@ fun NavigationBarButton(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .scale(animatedScale) // 应用缩放动画
+            .scale(animatedScale)
             .clickable(
                 onClick = onClick,
-                // 使用 Material 3 的新 ripple API
                 indication = ripple(
                     bounded = false,
                     radius = 30.dp,
@@ -179,22 +197,75 @@ fun NavigationBarButton(
             imageVector = item.icon,
             contentDescription = item.label,
             modifier = Modifier.size(26.dp),
-            tint = animatedIconColor // 使用动画颜色
+            tint = animatedIconColor
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = item.label,
             fontSize = 14.sp,
-            color = animatedTextColor, // 使用动画颜色
+            color = animatedTextColor,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+fun SpecialNavButton(
+    item: BottomNavItem,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.1f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "special_button_scale"
+    )
+
+    val animatedBackgroundColor by animateColorAsState(
+        targetValue = if (isSelected) Color(0xFFB8424F) else Color(0xFFD05667),
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "special_button_background"
+    )
+
+    Box(
+        modifier = modifier
+            .offset(y = (-20).dp)
+            .scale(animatedScale)
+            .clickable(
+                onClick = onClick,
+                indication = ripple(
+                    bounded = false,
+                    radius = 60.dp,
+                    color = Color(0xFFD05667)
+                ),
+                interactionSource = remember { MutableInteractionSource() }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(65.dp)
+                .clip(CircleShape)
+                .background(animatedBackgroundColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.label,
+                modifier = Modifier.size(32.dp),
+                tint = Color.White
+            )
+        }
     }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun BottomNavBarPreview() {
-    // 创建一个用于预览的 NavController
     val navController = rememberNavController()
 
     Scaffold(
