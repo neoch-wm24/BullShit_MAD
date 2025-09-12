@@ -14,4 +14,11 @@ class DeliveryViewModel : ViewModel() {
     fun removeDeliveries(toRemove: Set<Delivery>) {
         _deliveries.removeAll { it in toRemove }
     }
+
+    fun updateDelivery(updated: Delivery) {
+        val index = _deliveries.indexOfFirst { it.plateNumber == updated.plateNumber }
+        if (index != -1) {
+            _deliveries[index] = updated
+        }
+    }
 }

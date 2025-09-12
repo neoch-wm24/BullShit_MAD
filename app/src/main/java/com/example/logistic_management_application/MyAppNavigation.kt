@@ -85,7 +85,6 @@ fun MyAppNavigation(
 
             composable("delivery") {
                 DeliveryAndTransportationNavHost(
-                    mainNavController = navController,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
