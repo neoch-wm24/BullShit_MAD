@@ -19,7 +19,7 @@ import com.example.warehouse_management.ui.WarehouseManagementNavHost
 import com.example.warehouse_management.ui.screen.AddRakScreen
 import com.example.warehouse_management.ui.screen.RakInformationScreen
 import com.example.user_management.ui.*
-import com.example.delivery_and_transportation_management.ui.DeliveryAndTransportationNavHost
+import screen.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel
 
