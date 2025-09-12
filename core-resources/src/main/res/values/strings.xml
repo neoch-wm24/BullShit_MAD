@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LogExpress</string>
+    <string name="order_and_parcel_pt">Order and Parcel Management</string>
+    <string name="delivery_and_transportation_pt">Delivery and Transportation Management</string>
+    <string name="warehouse_pt">Warehouse Management</string>
+    <string name="user_pt">User Management</string>
+    <string name="report_pt">Report Management</string>
+    <string name="home_pt">Home</string>
+    <string name="profile_pt">Profile</string>
+    <string name="setting_pt">Setting</string>
+</resources>

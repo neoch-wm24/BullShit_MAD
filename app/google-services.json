@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "498748019685",
+    "project_id": "logexpressapplication",
+    "storage_bucket": "logexpressapplication.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:498748019685:android:9ee0c9261674df2c86150c",
+        "android_client_info": {
+          "package_name": "com.example.logistic_management_application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEFTiy-6qBVYuZw0mLkPZcncp-8Z4Kn2U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
