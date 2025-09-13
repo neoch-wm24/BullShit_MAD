@@ -5,6 +5,9 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -16,9 +19,13 @@ import java.util.Locale
 
 @Composable
 fun ParcelListSection(
-    allParcelData: List<AllParcelData>,
     modifier: Modifier = Modifier
 ) {
+    // Get data from ParcelDataManager with proper reactivity
+    val allParcelData by remember {
+        derivedStateOf { ParcelDataManager.allParcelData }
+    }
+
     Column(modifier = modifier) {
         // Parcel List Title
         Text(
@@ -37,7 +44,7 @@ fun ParcelListSection(
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Text(
-                    text = "No parcels available",
+                    text = "No parcels available. Add orders to see them here.",
                     fontSize = 16.sp,
                     color = Color.Gray,
                     modifier = Modifier.padding(20.dp)
@@ -53,7 +60,10 @@ fun ParcelListSection(
     }
 }
 
-fun LazyListScope.parcelListItems(allParcelData: List<AllParcelData>) {
+fun LazyListScope.parcelListItems() {
+    // Get data from ParcelDataManager
+    val allParcelData = ParcelDataManager.allParcelData
+
     // Parcel List Title
     item {
         Text(
@@ -74,7 +84,7 @@ fun LazyListScope.parcelListItems(allParcelData: List<AllParcelData>) {
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Text(
-                    text = "No parcels available",
+                    text = "No parcels available. Add orders to see them here.",
                     fontSize = 16.sp,
                     color = Color.Gray,
                     modifier = Modifier.padding(20.dp)
