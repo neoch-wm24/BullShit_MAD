@@ -60,15 +60,6 @@ fun SettingContent(modifier: Modifier = Modifier, navController: NavController, 
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { authViewModel.signout() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text(text = "Sign Out")
-            }
         }
     }
 }

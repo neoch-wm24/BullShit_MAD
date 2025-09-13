@@ -69,7 +69,7 @@ fun MyAppNavigation(
                     is AuthState.Authenticated -> {
                         HomePage(
                             navController = navController,
-                            role = state.role // ✅ 用真实 role，不会被覆盖成 employee
+                            role = state.role
                         )
                     }
                     is AuthState.Loading -> {
@@ -83,14 +83,6 @@ fun MyAppNavigation(
                     }
                 }
             }
-
-            composable("setting") {
-                SettingPage(
-                    modifier = Modifier.fillMaxSize(),
-                    navController = navController,
-                    authViewModel = authViewModel
-                )
-            }
             composable("profile") {
                 ProfilePage(
                     modifier = Modifier.fillMaxSize(),
@@ -98,28 +90,32 @@ fun MyAppNavigation(
                     authViewModel = authViewModel
                 )
             }
-            composable("order") {
-                OrderandParcelManagementNavHost(
+            composable("setting") {
+                SettingPage(
                     modifier = Modifier.fillMaxSize(),
+                    navController = navController,
+                    authViewModel = authViewModel
                 )
             }
             composable("user") {
                 UserScreen(modifier, navController)
             }
-
-            composable("delivery") {
-                DeliveryAndTransportationNavHost(
+            composable("order") {
+                OrderandParcelManagementNavHost(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-
             composable("warehouse") {
                 WarehouseManagementNavHost(
                     mainNavController = navController,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-
+            composable("delivery") {
+                DeliveryAndTransportationNavHost(
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             composable("rak_information/{rakId}") { backStackEntry ->
                 val rakId = backStackEntry.arguments?.getString("rakId") ?: ""
                 RakInformationScreen(
@@ -128,14 +124,12 @@ fun MyAppNavigation(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-
             composable("add_rak") {
                 AddRakScreen(
                     navController = navController,
                     modifier = Modifier.fillMaxSize()
                 )
             }
-
             composable("scan") {
                 androidx.compose.material3.Text(
                     text = "Scan Screen - Coming Soon",

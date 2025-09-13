@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.main_screen.viewmodel.AuthViewModel
+import androidx.compose.runtime.livedata.observeAsState
 
 @Composable
 fun ProfilePage(
@@ -33,41 +35,57 @@ fun ProfilePage(
 ) {
     ProfileContent(
         modifier = modifier,
-        navController = navController
+        navController = navController,
+        authViewModel = authViewModel
     )
 }
 
 @Composable
-fun ProfileContent(modifier: Modifier = Modifier, navController: NavController) {
+fun ProfileContent(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel) {
+    val authState = authViewModel.authState.observeAsState()
+
+    LaunchedEffect(authState.value) {
+        when(authState.value) {
+            is com.example.main_screen.viewmodel.AuthState.Unauthenticated -> navController.navigate("login")
+            else -> Unit
+        }
+    }
+
     Column(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Profile content area
-        Column(
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            text = "Profile Page is on the way",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "This page will contain user profile information and settings.",
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = { navController.navigate("setting") },
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .height(48.dp)
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Text(
-                text = "Profile Page is on the way",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "This page will contain user profile information and settings.",
-                fontSize = 14.sp,
-                color = Color.Gray
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = {navController.navigate("setting")}){
-                Text(text = "Setting")
+            Text(text = "Setting")
         }
-
-
+        Spacer(modifier = Modifier.weight(1f))
+        Button(
+            onClick = { authViewModel.signout() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
+            Text(text = "Sign Out")
         }
-
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

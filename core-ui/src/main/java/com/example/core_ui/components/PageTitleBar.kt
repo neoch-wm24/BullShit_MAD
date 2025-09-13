@@ -58,7 +58,7 @@ fun PageTitleBar(
     val title = getTitleByRoute(currentRoute)
 
     // 判断是否需要显示返回按钮（主页面不显示）
-    val showBackButton = currentRoute !in listOf("home", "profile", "setting")
+    val showBackButton = currentRoute !in listOf("home", "profile")
 
     Box(
         modifier = modifier
