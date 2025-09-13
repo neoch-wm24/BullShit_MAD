@@ -15,6 +15,9 @@ googleGmsGoogleServices = "4.4.3"
 appcompat = "1.7.1"
 material = "1.12.0"
 firebaseBom = "33.7.0"
+zxing-core = "3.5.1"
+zxing-embedded = "4.3.0"
+hashids = "1.0.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,6 +42,9 @@ material = { group = "com.google.android.material", name = "material", version.r
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing-core" }
+zxing-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxing-embedded" }
+hashids = { group = "org.hashids", name = "hashids", version.ref = "hashids" }
 
 
 [plugins]
