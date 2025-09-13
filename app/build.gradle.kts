@@ -62,10 +62,13 @@ dependencies {
     implementation(project(":warehouse-management"))
     implementation(project(":core-ui"))
 
-    implementation(platform("com.google.firebase:firebase-bom:32.3.0"))
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-firestore-ktx")
+    configurations.all {
+        resolutionStrategy {
+            force("com.google.firebase:firebase-common:21.0.0")
+            force("com.google.firebase:firebase-common-ktx:21.0.0")
 
+        }
+    }
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
