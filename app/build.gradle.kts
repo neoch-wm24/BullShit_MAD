@@ -55,13 +55,17 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.runtime.livedata)
-    implementation(libs.firebase.auth)
     implementation(project(":main-screen"))
     implementation(project(":delivery-and-transportation-management"))
     implementation(project(":order-and-parcel-management"))
     implementation(project(":user-management"))
     implementation(project(":warehouse-management"))
     implementation(project(":core-ui"))
+
+    implementation(platform("com.google.firebase:firebase-bom:32.3.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
