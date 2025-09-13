@@ -1,4 +1,4 @@
-package screen
+package com.example.delivery_and_transportation_management.ui.screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import data.Delivery
-import data.DeliveryViewModel
+import com.example.delivery_and_transportation_management.data.Delivery
+import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.ui.components.ActionButtonMenu
 
 @OptIn(ExperimentalMaterial3Api::class)

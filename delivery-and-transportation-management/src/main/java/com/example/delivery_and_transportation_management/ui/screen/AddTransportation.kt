@@ -1,4 +1,4 @@
-package screen
+package com.example.delivery_and_transportation_management.ui.screen
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
@@ -14,7 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import data.Delivery
+import com.example.delivery_and_transportation_management.data.Delivery
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)

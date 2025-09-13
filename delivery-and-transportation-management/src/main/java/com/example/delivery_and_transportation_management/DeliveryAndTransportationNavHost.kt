@@ -1,4 +1,4 @@
-package screen
+package com.example.delivery_and_transportation_management
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -7,7 +7,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import data.DeliveryViewModel
+import com.example.delivery_and_transportation_management.data.DeliveryViewModel
+import com.example.delivery_and_transportation_management.ui.screen.AddTransportationScreen
+import com.example.delivery_and_transportation_management.ui.screen.DeliveryDetail
+import com.example.delivery_and_transportation_management.ui.screen.DeliveryScreen
+import com.example.delivery_and_transportation_management.ui.screen.EditDeliveryScreen
 
 @Composable
 fun DeliveryAndTransportationNavHost(

@@ -1,4 +1,4 @@
-package data
+package com.example.delivery_and_transportation_management.data
 
 data class Transportation(
     val licensePlate: String,

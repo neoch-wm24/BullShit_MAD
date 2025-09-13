@@ -1,4 +1,4 @@
-package screen
+package com.example.delivery_and_transportation_management.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import data.Delivery
+import com.example.delivery_and_transportation_management.data.Delivery
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

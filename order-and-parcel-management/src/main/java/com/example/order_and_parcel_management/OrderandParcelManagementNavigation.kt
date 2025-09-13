@@ -1,17 +1,17 @@
-package com.example.order_and_parcel_management.ui
+package com.example.order_and_parcel_management
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.order_and_parcel_management.ui.screen.AddOrderandParcelScreen
 import com.example.order_and_parcel_management.ui.screen.SearchOrderAndParcelScreen
 import com.example.order_and_parcel_management.ui.screen.SelectOrderandParcelScreen
-import com.example.order_and_parcel_management.ui.screen.AddOrderandParcelScreen
 
 @Composable
 fun OrderandParcelManagementNavHost(
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.Companion,
 ) {
     val localNavController = rememberNavController()
 
@@ -29,11 +29,13 @@ fun OrderandParcelManagementNavHost(
         }
         composable("multiple_select") {
             SelectOrderandParcelScreen(
-                navController = localNavController)
+                navController = localNavController
+            )
         }
         composable("add") {
             AddOrderandParcelScreen(
-                navController = localNavController)
+                navController = localNavController
+            )
         }
     }
 }

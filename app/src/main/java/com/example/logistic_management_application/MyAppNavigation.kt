@@ -7,7 +7,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,12 +15,12 @@ import com.example.core_ui.components.PageTitleBar
 import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
 import com.example.main_screen.ui.ProfilePage
-import com.example.order_and_parcel_management.ui.OrderandParcelManagementNavHost
-import com.example.warehouse_management.ui.WarehouseManagementNavHost
+import com.example.order_and_parcel_management.OrderandParcelManagementNavHost
+import com.example.warehouse_management.WarehouseManagementNavHost
 import com.example.warehouse_management.ui.screen.AddRakScreen
 import com.example.warehouse_management.ui.screen.RakInformationScreen
 import com.example.user_management.ui.*
-import screen.DeliveryAndTransportationNavHost
+import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel

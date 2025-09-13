@@ -1,4 +1,4 @@
-package com.example.warehouse_management.ui
+package com.example.warehouse_management
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

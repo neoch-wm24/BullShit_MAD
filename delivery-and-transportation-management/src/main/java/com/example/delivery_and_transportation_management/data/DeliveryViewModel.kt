@@ -1,4 +1,4 @@
-package data
+package com.example.delivery_and_transportation_management.data
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
