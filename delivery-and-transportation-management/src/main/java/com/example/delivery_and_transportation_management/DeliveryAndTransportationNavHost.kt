@@ -7,11 +7,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.ui.screen.AddTransportationScreen
 import com.example.delivery_and_transportation_management.ui.screen.DeliveryDetail
 import com.example.delivery_and_transportation_management.ui.screen.DeliveryScreen
 import com.example.delivery_and_transportation_management.ui.screen.EditDeliveryScreen
+import androidx.compose.material3.Text
 
 @Composable
 fun DeliveryAndTransportationNavHost(
@@ -25,45 +27,55 @@ fun DeliveryAndTransportationNavHost(
         startDestination = "delivery_list",
         modifier = modifier
     ) {
+        // Delivery list
         composable("delivery_list") {
             DeliveryScreen(
                 deliveries = deliveryViewModel.deliveries,
-                onAddDelivery = {
-                    navController.navigate("add_transportation")
-                },
                 navController = navController,
-                deliveryViewModel = deliveryViewModel
+                onAddDelivery = { navController.navigate("add_transportation") },
+                onDeleteSelected = { selected ->
+                    selected.forEach { deliveryViewModel.removeDelivery(it) }
+                }
             )
         }
 
+        // Add new transportation
         composable("add_transportation") {
             AddTransportationScreen(
                 navController = navController,
                 onSave = { delivery ->
                     deliveryViewModel.addDelivery(delivery)
+                    navController.popBackStack() // back to list
                 }
             )
         }
-        composable("deliveryDetail/{plateNumber}") { backStackEntry ->
-            val plateNumber = backStackEntry.arguments?.getString("plateNumber") ?: return@composable
-            val deliveryViewModel: DeliveryViewModel = viewModel()
-            val delivery = deliveryViewModel.deliveries.find { it.plateNumber == plateNumber }
+
+        // Delivery detail
+        composable("deliveryDetail/{id}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: return@composable
+            val delivery = deliveryViewModel.deliveries.find { it.id == id }
 
             if (delivery != null) {
                 DeliveryDetail(
                     delivery = delivery,
                     navController = navController,
-                    onEdit = { updatedDelivery ->
-                        navController.navigate("editDelivery/${updatedDelivery.plateNumber}")
+                    onEdit = { toEdit ->
+                        navController.navigate("editDelivery/${toEdit.id}")
+                    },
+                    onDelete = { toDelete ->
+                        deliveryViewModel.removeDelivery(toDelete)
+                        navController.popBackStack()
                     }
                 )
+            } else {
+                Text(text = "Delivery not found")
             }
         }
 
-        composable("editDelivery/{plateNumber}") { backStackEntry ->
-            val plateNumber = backStackEntry.arguments?.getString("plateNumber") ?: return@composable
-            val deliveryViewModel: DeliveryViewModel = viewModel()
-            val delivery = deliveryViewModel.deliveries.find { it.plateNumber == plateNumber }
+        // Edit delivery
+        composable("editDelivery/{id}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: return@composable
+            val delivery = deliveryViewModel.deliveries.find { it.id == id }
 
             if (delivery != null) {
                 EditDeliveryScreen(
@@ -71,10 +83,12 @@ fun DeliveryAndTransportationNavHost(
                     navController = navController,
                     onSave = { updated ->
                         deliveryViewModel.updateDelivery(updated)
+                        navController.popBackStack()
                     }
                 )
+            } else {
+                Text(text = "Delivery not found")
             }
         }
-
     }
 }

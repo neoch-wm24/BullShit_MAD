@@ -17,7 +17,7 @@ fun EditDeliveryScreen(
     navController: NavController,
     onSave: (Delivery) -> Unit
 ) {
-    var plateNumber by remember { mutableStateOf(delivery.plateNumber) }
+    var plateNumber by remember { mutableStateOf(delivery.plateNumber.orEmpty()) }
     var driverName by remember { mutableStateOf(delivery.driverName) }
     var type by remember { mutableStateOf(delivery.type) }
     var date by remember { mutableStateOf(delivery.date) }
@@ -83,7 +83,6 @@ fun EditDeliveryScreen(
                         date = date
                     )
                     onSave(updatedDelivery)
-                    navController.popBackStack()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
