@@ -43,22 +43,31 @@ import com.example.main_screen.viewmodel.AuthState
 import com.example.main_screen.viewmodel.AuthViewModel
 
 @Composable
-fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel) {
-
+fun LoginPage(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    authViewModel: AuthViewModel
+) {
     val loginPageImage = painterResource(R.drawable.login_page_image)
 
     var employeeID by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }  // 👈 新增 toggle 状态
+    var showPassword by remember { mutableStateOf(false) }
 
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
 
     LaunchedEffect(authState.value) {
-        when(authState.value) {
-            is AuthState.Authenticated -> navController.navigate("home")
-            is AuthState.Error -> Toast.makeText(context,
-                (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+        when (val state = authState.value) {
+            is AuthState.Authenticated -> {
+                // 修复：统一使用 "home" 路由，在 HomePage 中根据 role 显示不同内容
+                navController.navigate("home") {
+                    popUpTo("login") { inclusive = true }
+                }
+            }
+            is AuthState.Error -> {
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+            }
             else -> Unit
         }
     }
@@ -67,12 +76,8 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
-    ){
-
-        Image(
-            painter = loginPageImage,
-            contentDescription = null
-        )
+    ) {
+        Image(painter = loginPageImage, contentDescription = null)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -80,15 +85,13 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
             text = "Login",
             fontSize = 32.sp,
             fontFamily = FontFamily.SansSerif,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
+            fontWeight = FontWeight.Bold
         )
 
         Text(
             text = "Please sign in to continue.",
             fontSize = 15.sp,
-            fontFamily = FontFamily.SansSerif,
-            modifier = Modifier
+            fontFamily = FontFamily.SansSerif
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -103,7 +106,6 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 🔑 Password TextField with toggle
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -112,12 +114,11 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
             visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(
-                onDone = {
-                    authViewModel.login(employeeID, password)
-                }
+                onDone = { authViewModel.loginWithEmployeeID(employeeID, password) }
             ),
             trailingIcon = {
-                val image = if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                val image =
+                    if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                 IconButton(onClick = { showPassword = !showPassword }) {
                     Icon(
                         imageVector = image,
@@ -130,7 +131,7 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
         Spacer(modifier = Modifier.height(10.dp))
 
         Button(
-            onClick = { authViewModel.login(employeeID, password) },
+            onClick = { authViewModel.loginWithEmployeeID(employeeID, password) },
             enabled = authState.value != AuthState.Loading,
             modifier = Modifier
                 .width(280.dp)
@@ -146,4 +147,3 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
         }
     }
 }
-

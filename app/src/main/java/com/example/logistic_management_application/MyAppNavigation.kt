@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -22,6 +23,7 @@ import com.example.warehouse_management.ui.screen.RakInformationScreen
 import com.example.user_management.ui.*
 import screen.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
+import com.example.main_screen.viewmodel.AuthState
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,12 +61,27 @@ fun MyAppNavigation(
                 )
             }
             composable("home") {
-                HomePage(
-                    modifier = Modifier.fillMaxSize(),
-                    navController = navController,
-                    authViewModel = authViewModel
-                )
+                val authState = authViewModel.authState.observeAsState()
+
+                when (val state = authState.value) {
+                    is AuthState.Authenticated -> {
+                        HomePage(
+                            navController = navController,
+                            role = state.role // ✅ 用真实 role，不会被覆盖成 employee
+                        )
+                    }
+                    is AuthState.Loading -> {
+                        androidx.compose.material3.Text("Loading...")
+                    }
+                    is AuthState.Error -> {
+                        androidx.compose.material3.Text("Error: ${state.message}")
+                    }
+                    else -> {
+                        androidx.compose.material3.Text("Not authenticated")
+                    }
+                }
             }
+
             composable("setting") {
                 SettingPage(
                     modifier = Modifier.fillMaxSize(),

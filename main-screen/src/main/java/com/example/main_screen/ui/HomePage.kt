@@ -47,69 +47,85 @@ data class DashboardItem(
 )
 
 @Composable
-fun HomePage(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel) {
-    HomeContent(
-        modifier = modifier,
-        navController = navController
-    )
-}
-
-@Composable
-fun HomeContent(modifier: Modifier = Modifier, navController: NavController) {
-    Column {
-        Dashboard(modifier, navController)
+fun HomePage(navController: NavController, role: String) {
+    when (role) {
+        "admin" -> AdminHome(navController)
+        "driver" -> DriverHome(navController)
+        else -> EmployeeHome(navController)
     }
 }
 
+@Composable
+fun AdminHome(navController: NavController) {
+    Dashboard(
+        navController = navController,
+        items = listOf(
+            DashboardItem("User", Icons.Default.Person, "user"),
+            DashboardItem("Order", Icons.Default.ShoppingCart, "order"),
+            DashboardItem("Warehouse", Icons.Default.Home, "warehouse"),
+            DashboardItem("Delivery", Icons.AutoMirrored.Filled.Send, "delivery"),
+        )
+    )
+
+    Text(text="This is Admin Home Page")
+
+}
+
+@Composable
+fun DriverHome(navController: NavController) {
+    Dashboard(
+        navController = navController,
+        items = listOf(
+            DashboardItem("Order", Icons.Default.ShoppingCart, "order"),
+            DashboardItem("Delivery", Icons.AutoMirrored.Filled.Send, "delivery"),
+        )
+    )
+    Text(text = "This is Driver Home Page")
+}
+
+@Composable
+fun EmployeeHome(navController: NavController) {
+    Dashboard(
+        navController = navController,
+        items = listOf(
+            DashboardItem("User", Icons.Default.Person, "user"),
+            DashboardItem("Order", Icons.Default.ShoppingCart, "order"),
+            DashboardItem("Warehouse", Icons.Default.Home, "warehouse"),
+            DashboardItem("Delivery", Icons.AutoMirrored.Filled.Send, "delivery"),
+        )
+    )
+    Text(text="This is Employee Home Page")
+}
 
 @Composable
 fun Dashboard(
-    modifier: Modifier = Modifier,
-    navController: NavController
+    navController: NavController,
+    items: List<DashboardItem>
 ) {
-    val dashboardList = listOf(
-        DashboardItem("User", Icons.Default.Person, "user"),
-        DashboardItem("Order", Icons.Default.ShoppingCart, "order"),
-        DashboardItem("Warehouse", Icons.Default.Home, "warehouse"),
-        DashboardItem("Delivery", Icons.AutoMirrored.Filled.Send, "delivery"),
-    )
-
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Dashboard",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.Start)
-        )
+        Text("Dashboard", fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-        // Two rows, two columns layout
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                DashboardButton(item = dashboardList[0], navController, modifier = Modifier.weight(1f))
-                DashboardButton(item = dashboardList[1], navController, modifier = Modifier.weight(1f))
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                DashboardButton(item = dashboardList[2], navController, modifier = Modifier.weight(1f))
-                DashboardButton(item = dashboardList[3], navController, modifier = Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            items.chunked(2).forEach { rowItems ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    rowItems.forEach {
+                        DashboardButton(item = it, navController, modifier = Modifier.weight(1f))
+                    }
+                    if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
 }
+
 
 @Composable
 fun DashboardButton(item: DashboardItem, navController: NavController, modifier: Modifier = Modifier) {
@@ -150,5 +166,5 @@ fun DashboardButton(item: DashboardItem, navController: NavController, modifier:
 @Composable
 fun DashboardPreview() {
     val navController = rememberNavController()
-    Dashboard(navController = navController)
+    AdminHome(navController)
 }
