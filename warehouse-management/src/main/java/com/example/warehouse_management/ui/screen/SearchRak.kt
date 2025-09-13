@@ -13,14 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -43,6 +39,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.core_data.RakInfo
 import com.example.core_data.RakManager
+import com.example.core_ui.components.SearchBar
 import kotlinx.coroutines.launch
 import com.example.warehouse_management.ui.components.FloatingActionButton
 
@@ -200,51 +197,6 @@ fun SearchRakScreen(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
         )
-    }
-}
-
-@Composable
-private fun SearchBar(
-    searchText: String,
-    onSearchTextChange: (String) -> Unit,
-    onClearSearch: () -> Unit,
-    isSearchActive: Boolean
-) {
-    Box(
-        modifier = Modifier
-            .padding(20.dp)
-            .background(Color(0xFFFFFFFF))
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextField(
-                value = searchText,
-                onValueChange = onSearchTextChange,
-                placeholder = { Text("Search") },
-                modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent
-                )
-            )
-
-            if (isSearchActive && searchText.isNotBlank()) {
-                IconButton(
-                    onClick = onClearSearch,
-                    modifier = Modifier.padding(5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear Search",
-                        modifier = Modifier.size(24.dp),
-                        tint = Color.Gray
-                    )
-                }
-            }
-        }
     }
 }
 
