@@ -62,13 +62,6 @@ dependencies {
     implementation(project(":warehouse-management"))
     implementation(project(":core-ui"))
 
-    configurations.all {
-        resolutionStrategy {
-            force("com.google.firebase:firebase-common:21.0.0")
-            force("com.google.firebase:firebase-common-ktx:21.0.0")
-
-        }
-    }
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
