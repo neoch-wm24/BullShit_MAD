@@ -13,20 +13,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.delivery_and_transportation_management.data.Delivery
-import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.ui.components.ActionButtonMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeliveryScreen(
     deliveries: List<Delivery>,
-    onAddDelivery: () -> Unit,
     navController: NavController,
-    deliveryViewModel: DeliveryViewModel = viewModel()
+    // Optional callbacks to keep this UI composable preview-friendly
+    onAddDelivery: () -> Unit = {},
+    onDeleteSelected: (Set<Delivery>) -> Unit = {}
 ) {
     var isMultiSelectMode by remember { mutableStateOf(false) }
     var selectedItems by remember { mutableStateOf(setOf<Delivery>()) }
@@ -38,15 +37,35 @@ fun DeliveryScreen(
             deliveries
         } else {
             deliveries.filter {
-                it.plateNumber.contains(searchQuery, true) ||
+                it.plateNumber?.contains(searchQuery, true) == true ||
                         it.driverName.contains(searchQuery, true) ||
                         it.type.contains(searchQuery, true) ||
-                        it.date.contains(searchQuery, true)
+                        it.date.contains(searchQuery, true) ||
+                        it.id.contains(searchQuery, true)
             }
         }
     }
 
     Scaffold(
+        topBar = {
+            // Search bar at the very top
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    },
+                    label = { Text("Search Deliveries") },
+                    placeholder = { Text("Search by plate, driver, type, date, or ID") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -58,20 +77,6 @@ fun DeliveryScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                // Search bar at the top
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    },
-                    label = { Text("Search Deliveries") },
-                    placeholder = { Text("Search by plate, driver, type, or date") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Multi-select toolbar
                 if (isMultiSelectMode) {
                     Card(
@@ -102,7 +107,7 @@ fun DeliveryScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 IconButton(
                                     onClick = {
-                                        deliveryViewModel.removeDeliveries(selectedItems)
+                                        onDeleteSelected(selectedItems)
                                         selectedItems = emptySet()
                                         isMultiSelectMode = false
                                     },
@@ -133,6 +138,7 @@ fun DeliveryScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filteredDeliveries) { delivery ->
+                            val plateDisplay = delivery.plateNumber ?: delivery.id
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -144,7 +150,8 @@ fun DeliveryScreen(
                                                 selectedItems + delivery
                                             }
                                         } else {
-                                            navController.navigate("deliveryDetail/${delivery.plateNumber}")
+                                            // Navigate using ID to match route
+                                            navController.navigate("deliveryDetail/${delivery.id}")
                                         }
 
                                     },
@@ -178,7 +185,7 @@ fun DeliveryScreen(
 
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "Plate: ${delivery.plateNumber}",
+                                            text = "Plate: $plateDisplay",
                                             style = MaterialTheme.typography.titleMedium
                                         )
                                         Text(
@@ -228,9 +235,4 @@ fun PreviewDeliveryScreen() {
         Delivery("LMN456", "Bob Tan", "Bike", "2025-09-17")
     )
 
-    DeliveryScreen(
-        deliveries = sampleDeliveries,
-        onAddDelivery = {},
-        navController = rememberNavController()
-    )
 }

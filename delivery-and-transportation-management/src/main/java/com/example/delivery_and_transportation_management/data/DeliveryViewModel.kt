@@ -3,6 +3,8 @@ package com.example.delivery_and_transportation_management.data
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 
+
+
 class DeliveryViewModel : ViewModel() {
     private val _deliveries = mutableStateListOf<Delivery>()
     val deliveries: List<Delivery> get() = _deliveries
@@ -11,14 +13,14 @@ class DeliveryViewModel : ViewModel() {
         _deliveries.add(delivery)
     }
 
-    fun removeDeliveries(toRemove: Set<Delivery>) {
-        _deliveries.removeAll { it in toRemove }
-    }
-
     fun updateDelivery(updated: Delivery) {
-        val index = _deliveries.indexOfFirst { it.plateNumber == updated.plateNumber }
+        val index = _deliveries.indexOfFirst { it.id == updated.id }
         if (index != -1) {
-            _deliveries[index] = updated
+            _deliveries[index] = updated // ✅ in-place update (preserves list + keeps state)
         }
     }
+    fun removeDelivery(delivery: Delivery) {
+        _deliveries.remove(delivery)
+    }
+
 }

@@ -135,13 +135,14 @@ fun AddTransportationScreen(
                 onClick = {
                     if (plateNumber.isNotBlank() && driverName.isNotBlank() && selectedDate.isNotBlank()) {
                         val newDelivery = Delivery(
-                            plateNumber = plateNumber,
+                            id = UUID.randomUUID().toString(),
                             driverName = driverName,
                             type = selectedType,
-                            date = selectedDate
+                            date = selectedDate,
+                            plateNumber = plateNumber
                         )
                         onSave(newDelivery)
-                        navController.popBackStack()
+                        // Navigation is handled by the caller (NavHost) to avoid double pop
                     }
                 },
                 modifier = Modifier.align(Alignment.End),
