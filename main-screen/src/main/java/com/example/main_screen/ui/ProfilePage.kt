@@ -42,8 +42,6 @@ fun ProfileContent(modifier: Modifier = Modifier, navController: NavController) 
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        ProfileTitle()
-
         // Profile content area
         Column(
             modifier = Modifier
@@ -71,42 +69,5 @@ fun ProfileContent(modifier: Modifier = Modifier, navController: NavController) 
 
         }
 
-    }
-}
-
-@Composable
-fun ProfileTitle(
-    title: String = "Profile"
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .background(Color.White)
-            .drawBehind {
-                val strokeWidth = 2.dp.toPx()
-                drawLine(
-                    color = Color(0xFFDDDDDD),
-                    start = Offset(0f, size.height - strokeWidth / 2),
-                    end = Offset(size.width, size.height - strokeWidth / 2),
-                    strokeWidth = strokeWidth
-                )
-            }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-        }
     }
 }
