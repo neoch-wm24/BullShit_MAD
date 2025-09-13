@@ -54,7 +54,6 @@ fun LoginPage(modifier: Modifier = Modifier, navController: NavController, authV
                 (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
             else -> Unit
         }
-
     }
 
     Column(

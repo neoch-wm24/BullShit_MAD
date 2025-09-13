@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import data.Delivery
@@ -25,7 +26,7 @@ fun DeliveryScreen(
     deliveries: List<Delivery>,
     onAddDelivery: () -> Unit,
     navController: NavController,
-    deliveryViewModel: DeliveryViewModel
+    deliveryViewModel: DeliveryViewModel = viewModel()
 ) {
     var isMultiSelectMode by remember { mutableStateOf(false) }
     var selectedItems by remember { mutableStateOf(setOf<Delivery>()) }
@@ -230,7 +231,6 @@ fun PreviewDeliveryScreen() {
     DeliveryScreen(
         deliveries = sampleDeliveries,
         onAddDelivery = {},
-        navController = rememberNavController(),
-        deliveryViewModel = DeliveryViewModel()
+        navController = rememberNavController()
     )
 }

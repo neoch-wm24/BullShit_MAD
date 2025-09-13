@@ -12,8 +12,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.core_ui.components.BottomNavBar
 import com.example.core_ui.components.PageTitleBar
-import com.example.logistic_management_application.ui.mainscreen.pages.LoginPage
-import com.example.logistic_management_application.ui.mainscreen.pages.SettingPage
+import com.example.main_screen.ui.LoginPage
+import com.example.main_screen.ui.SettingPage
+import com.example.main_screen.ui.ProfilePage
 import com.example.order_and_parcel_management.ui.OrderandParcelManagementNavHost
 import com.example.warehouse_management.ui.WarehouseManagementNavHost
 import com.example.warehouse_management.ui.screen.AddRakScreen
@@ -27,23 +28,28 @@ import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewMode
 @Composable
 fun MyAppNavigation(
     modifier: Modifier = Modifier,
-    authViewModel: com.example.logistic_management_application.ui.modules.user.AuthViewModel
+    authViewModel: MainScreenAuthViewModel
 ) {
     val navController = rememberNavController()
+    val currentRoute = navController.currentBackStackEntry?.destination?.route
 
     Scaffold(
         modifier = modifier,
         topBar = {
-            PageTitleBar(navController = navController)
+            if (currentRoute != "login") {
+                PageTitleBar(navController = navController)
+            }
         },
         bottomBar = {
-            BottomNavBar(navController = navController)
+            if (currentRoute != "login") {
+                BottomNavBar(navController = navController)
+            }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "home",
-            modifier = Modifier.padding(innerPadding)
+            startDestination = "login",
+            modifier = if (currentRoute == "login") Modifier.fillMaxSize() else Modifier.padding(innerPadding)
         ) {
             composable("login") {
                 LoginPage(
@@ -53,11 +59,10 @@ fun MyAppNavigation(
                 )
             }
             composable("home") {
-                val mainScreenAuthViewModel: MainScreenAuthViewModel = viewModel()
                 HomePage(
                     modifier = Modifier.fillMaxSize(),
                     navController = navController,
-                    authViewModel = mainScreenAuthViewModel
+                    authViewModel = authViewModel
                 )
             }
             composable("setting") {
@@ -68,10 +73,10 @@ fun MyAppNavigation(
                 )
             }
             composable("profile") {
-                // Temporary placeholder for ProfilePage until it's available
-                androidx.compose.material3.Text(
-                    text = "Profile Page - Coming Soon",
-                    modifier = Modifier.fillMaxSize()
+                ProfilePage(
+                    modifier = Modifier.fillMaxSize(),
+                    navController = navController,
+                    authViewModel = authViewModel
                 )
             }
             composable("order") {
@@ -113,7 +118,6 @@ fun MyAppNavigation(
             }
 
             composable("scan") {
-                // Temporary placeholder for ScanScreen until it's available
                 androidx.compose.material3.Text(
                     text = "Scan Screen - Coming Soon",
                     modifier = Modifier.fillMaxSize()
