@@ -1,51 +1,100 @@
 package com.example.core_data
 
-import java.util.UUID
+import androidx.compose.runtime.mutableStateListOf
+import java.util.Date
 
-// Duplicate data classes and ParcelDataStore removed. See ParcelDataModels.kt for definitions.
-
-data class SenderInfo(val information: String)
-data class RecipientInfo(val information: String)
+// Data classes for parcel management
 data class ParcelInfo(
-    val id: String = UUID.randomUUID().toString(),
-    val information: String
+    val id: String,
+    val description: String,
+    val weight: String,
+    val dimensions: String,
+    val value: String,
+    val information: String = "$description - Weight: $weight, Size: $dimensions, Value: $value"
 )
+
+data class AddressInfo(
+    val name: String,
+    val phone: String,
+    val addressLine: String,
+    val city: String,
+    val postalCode: String,
+    val state: String,
+    val information: String = "$name, $phone, $addressLine, $city $postalCode, $state"
+)
+
 data class AllParcelData(
-    val id: String = UUID.randomUUID().toString(),
-    val sender: SenderInfo,
-    val recipient: RecipientInfo,
-    val parcels: List<ParcelInfo>,
-    val rakId: String? = null, // Add rakId to associate parcels with specific Rak
-    val timestamp: Long = System.currentTimeMillis()
+    val id: String,
+    val timestamp: Date,
+    val sender: AddressInfo,
+    val recipient: AddressInfo,
+    val parcels: List<ParcelInfo>
 )
 
-object ParcelDataStore {
-    private val _orders = mutableListOf<AllParcelData>()
-    val orders: List<AllParcelData> get() = _orders.toList()
+// Global state manager for parcel data
+object ParcelDataManager {
+    private val _allParcelData = mutableStateListOf<AllParcelData>()
+    val allParcelData: List<AllParcelData> get() = _allParcelData.toList()
 
-    fun addOrder(order: AllParcelData) {
-        _orders.add(order)
+    fun addOrder(orderData: AllParcelData) {
+        _allParcelData.add(orderData)
     }
 
     fun getOrderById(id: String): AllParcelData? {
-        return _orders.find { it.id == id }
+        return _allParcelData.find { it.id == id }
     }
 
-    fun updateOrder(order: AllParcelData) {
-        val index = _orders.indexOfFirst { it.id == order.id }
-        if (index != -1) {
-            _orders[index] = order
-        }
+    fun getAllOrders(): List<AllParcelData> {
+        return _allParcelData.toList()
     }
 
-    fun deleteOrder(id: String) {
-        _orders.removeIf { it.id == id }
+    fun clearAllOrders() {
+        _allParcelData.clear()
     }
 
-    fun clearOrders() { _orders.clear() }
+    // Save order using generic data structure (called from AddOrderandParcel screen)
+    fun saveOrderFromUI(
+        orderId: String,
+        senderName: String,
+        senderPhone: String,
+        senderAddressLine: String,
+        senderCity: String,
+        senderPostalCode: String,
+        senderState: String,
+        receiverName: String,
+        receiverPhone: String,
+        receiverAddressLine: String,
+        receiverCity: String,
+        receiverPostalCode: String,
+        receiverState: String,
+        parcels: List<ParcelInfo>
+    ) {
+        val senderInfo = AddressInfo(
+            name = senderName,
+            phone = senderPhone,
+            addressLine = senderAddressLine,
+            city = senderCity,
+            postalCode = senderPostalCode,
+            state = senderState
+        )
 
-    // Add function to get parcels for a specific Rak
-    fun getOrdersForRak(rakId: String): List<AllParcelData> {
-        return _orders.filter { it.rakId == rakId }
+        val receiverInfo = AddressInfo(
+            name = receiverName,
+            phone = receiverPhone,
+            addressLine = receiverAddressLine,
+            city = receiverCity,
+            postalCode = receiverPostalCode,
+            state = receiverState
+        )
+
+        val orderData = AllParcelData(
+            id = orderId,
+            timestamp = Date(),
+            sender = senderInfo,
+            recipient = receiverInfo,
+            parcels = parcels
+        )
+
+        addOrder(orderData)
     }
 }

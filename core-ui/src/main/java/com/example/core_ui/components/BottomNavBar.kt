@@ -9,19 +9,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -57,14 +46,14 @@ data class BottomNavItem(
     val label: String,
     val icon: ImageVector,
     val route: String,
-    val isSpecial: Boolean = false // ✅ 用来标记特殊按钮
+    val isSpecial: Boolean = false
 )
 
 @Composable
 fun BottomNavBar(navController: NavController, modifier: Modifier = Modifier) {
     val bottomNavItemList = listOf(
         BottomNavItem("Home", Icons.Default.Home, "home"),
-        BottomNavItem("Scan", Icons.Default.QrCodeScanner, "scan", isSpecial = true), // ✅ 特殊按钮
+        BottomNavItem("Scan", Icons.Default.QrCodeScanner, "scan", isSpecial = true),
         BottomNavItem("Profile", Icons.Default.Person, "profile"),
     )
 
@@ -109,7 +98,6 @@ fun NavigationBar(
                 val isSelected = currentDestination?.destination?.route == item.route
 
                 if (item.isSpecial) {
-                    // ✅ 凸起的特殊按钮
                     SpecialNavButton(
                         item = item,
                         isSelected = isSelected,
@@ -156,20 +144,29 @@ fun NavigationBarButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val targetColor = when {
+        isPressed -> Color(0xFFFF69B4) // 按下热粉
+        isSelected -> Black
+        else -> Grey
+    }
+
     val animatedIconColor by animateColorAsState(
-        targetValue = if (isSelected) Black else Grey,
+        targetValue = targetColor,
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "icon_color_animation"
     )
 
     val animatedTextColor by animateColorAsState(
-        targetValue = if (isSelected) Black else Grey,
+        targetValue = targetColor,
         animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "text_color_animation"
     )
 
     val animatedScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.10f else 1f,
+        targetValue = if (isSelected) 1.10f else if (isPressed) 0.95f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -186,9 +183,9 @@ fun NavigationBarButton(
                 indication = ripple(
                     bounded = false,
                     radius = 30.dp,
-                    color = Black
+                    color = Color(0xFFFFB6C1) // 浅粉水波纹
                 ),
-                interactionSource = remember { MutableInteractionSource() }
+                interactionSource = interactionSource
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -216,19 +213,29 @@ fun SpecialNavButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // ✅ 特殊按钮颜色逻辑 (深粉 → 热粉)
+    val targetColor = when {
+        isPressed -> Color(0xFFFF69B4) // 按下热粉
+        isSelected -> Color(0xFFFFB6C1) // 选中浅粉
+        else -> Color(0xFFFF69B4)       // 默认热粉
+    }
+
+    val animatedBackgroundColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "special_button_background"
+    )
+
     val animatedScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
+        targetValue = if (isPressed) 0.95f else if (isSelected) 1.1f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
         label = "special_button_scale"
-    )
-
-    val animatedBackgroundColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFFB8424F) else Color(0xFFD05667),
-        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-        label = "special_button_background"
     )
 
     Box(
@@ -240,9 +247,9 @@ fun SpecialNavButton(
                 indication = ripple(
                     bounded = false,
                     radius = 60.dp,
-                    color = Color(0xFFD05667)
+                    color = Color(0xFFFFB6C1) // 浅粉水波纹
                 ),
-                interactionSource = remember { MutableInteractionSource() }
+                interactionSource = interactionSource
             ),
         contentAlignment = Alignment.Center
     ) {

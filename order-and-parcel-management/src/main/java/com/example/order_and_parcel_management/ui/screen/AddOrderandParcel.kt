@@ -31,7 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,10 +50,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.set
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.core_ui.components.BottomNavBar
-import com.example.core_ui.components.PageTitleBar
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.oned.Code128Writer
 import com.google.zxing.qrcode.QRCodeWriter
@@ -63,6 +61,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
+import com.example.core_data.ParcelDataManager
 
 
 // 数据类定义
@@ -91,11 +90,11 @@ data class Order(
 )
 
 private val hashids = Hashids("Log-Express", 6, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-private val dateFormat = SimpleDateFormat("yyMMdd", Locale.getDefault())
+private fun getDateFormat() = SimpleDateFormat("yyMMdd", Locale.getDefault())
 private val counter = AtomicInteger(0)
 
 fun generateOrderId(): String {
-    val dateStr = dateFormat.format(Date())
+    val dateStr = getDateFormat().format(Date())
 
     // 秒级时间戳
     val seconds = System.currentTimeMillis() / 1000
@@ -121,7 +120,7 @@ fun AddOrderandParcelScreen(
     var showParcelDialog by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFF8F8F8))
     ) {
@@ -175,8 +174,42 @@ fun AddOrderandParcelScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        // 处理订单提交逻辑
+                        // 处理订单提交逻辑 - 保存数据并导航到搜索页面
                         println("订单提交: $order")
+
+                        // 转换包裹数据到 ParcelInfo 格式
+                        val parcelInfoList = order.parcels.map { parcel ->
+                            com.example.core_data.ParcelInfo(
+                                id = parcel.id,
+                                description = parcel.description,
+                                weight = parcel.weight,
+                                dimensions = parcel.dimensions,
+                                value = parcel.value
+                            )
+                        }
+
+                        // 保存数据到 ParcelDataManager
+                        ParcelDataManager.saveOrderFromUI(
+                            orderId = order.id,
+                            senderName = order.senderAddress.name,
+                            senderPhone = order.senderAddress.phone,
+                            senderAddressLine = order.senderAddress.addressLine,
+                            senderCity = order.senderAddress.city,
+                            senderPostalCode = order.senderAddress.postalCode,
+                            senderState = order.senderAddress.state,
+                            receiverName = order.receiverAddress.name,
+                            receiverPhone = order.receiverAddress.phone,
+                            receiverAddressLine = order.receiverAddress.addressLine,
+                            receiverCity = order.receiverAddress.city,
+                            receiverPostalCode = order.receiverAddress.postalCode,
+                            receiverState = order.receiverAddress.state,
+                            parcels = parcelInfoList
+                        )
+
+                        // 导航回搜索页面
+                        navController.navigate("search") {
+                            popUpTo("add") { inclusive = true }
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = order.senderAddress.name.isNotEmpty() &&
@@ -525,14 +558,15 @@ fun generateQRCode(text: String): Bitmap? {
         val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 300, 300)
         val width = bitMatrix.width
         val height = bitMatrix.height
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        val bitmap = createBitmap(width, height, Bitmap.Config.RGB_565)
         for (x in 0 until width) {
             for (y in 0 until height) {
-                bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb())
+                bitmap[x, y] = if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb()
             }
         }
         bitmap
     } catch (e: Exception) {
+        e.printStackTrace()
         null
     }
 }
@@ -558,32 +592,14 @@ fun generateBarcode(text: String): Bitmap? {
         bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
         bitmap
     } catch (e: Exception) {
+        e.printStackTrace()
         null
     }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-private fun OrderAndParcelWithNavigationPreview() {
-    val fakeMainNavController = rememberNavController()
-
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F8F8)),
-        topBar = {
-            PageTitleBar(navController = fakeMainNavController
-            )
-        },
-        bottomBar = {
-            BottomNavBar(navController = fakeMainNavController)
-        }
-    ) { innerPadding ->
-        AddOrderandParcelScreen(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            navController = fakeMainNavController,
-        )
-    }
+private fun AddOrderandParcelScreenPreview() {
+    val navController = rememberNavController()
+    AddOrderandParcelScreen(navController = navController)
 }
