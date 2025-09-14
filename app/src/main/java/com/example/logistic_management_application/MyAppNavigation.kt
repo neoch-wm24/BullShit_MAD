@@ -21,10 +21,10 @@ import com.example.order_and_parcel_management.OrderandParcelManagementNavHost
 import com.example.warehouse_management.WarehouseManagementNavHost
 import com.example.warehouse_management.ui.screen.AddRakScreen
 import com.example.warehouse_management.ui.screen.RakInformationScreen
-import com.example.user_management.ui.*
 import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
+import com.example.user_management.ui.UserManagementNavHost
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,8 +98,9 @@ fun MyAppNavigation(
                 )
             }
             composable("user") {
-                UserScreen(modifier, navController)
-            }
+                UserManagementNavHost(
+                    modifier = Modifier.fillMaxSize(),
+                )            }
             composable("order") {
                 OrderandParcelManagementNavHost(
                     modifier = Modifier.fillMaxSize(),

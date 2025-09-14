@@ -14,6 +14,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        sourceSets {
+            getByName("main") {
+                res.srcDirs("src/main/res")
+            }
+        }
     }
 
     buildTypes {
@@ -56,9 +62,12 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.lottie.compose)
+
 
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))
+    implementation(libs.androidx.foundation)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -54,6 +54,8 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))
+    implementation(project(":core-data"))
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

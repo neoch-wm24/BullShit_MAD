@@ -48,18 +48,10 @@ fun AdminHome(navController: NavController) {
         )
     )
 
-    Text(text = "This is Admin Home Page")
 }
 
 @Composable
 fun DriverHome(navController: NavController) {
-    Dashboard(
-        navController = navController,
-        items = listOf(
-            DashboardItem("Order", Icons.Default.ShoppingCart, "order"),
-            DashboardItem("Delivery", Icons.AutoMirrored.Filled.Send, "delivery"),
-        )
-    )
     Text(text = "This is Driver Home Page")
 }
 
@@ -68,13 +60,10 @@ fun EmployeeHome(navController: NavController) {
     Dashboard(
         navController = navController,
         items = listOf(
-            DashboardItem("User", Icons.Default.Person, "user"),
             DashboardItem("Order", Icons.Default.ShoppingCart, "order"),
             DashboardItem("Warehouse", Icons.Default.Home, "warehouse"),
-            DashboardItem("Delivery", Icons.AutoMirrored.Filled.Send, "delivery"),
         )
     )
-    Text(text = "This is Employee Home Page")
 }
 
 @Composable

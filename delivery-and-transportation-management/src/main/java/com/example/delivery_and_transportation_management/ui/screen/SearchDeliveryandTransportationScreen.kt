@@ -48,7 +48,6 @@ fun DeliveryScreen(
 
     Scaffold(
         topBar = {
-            // Search bar at the very top
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
