@@ -36,7 +36,8 @@ data class ActionButtonItem(
 @Composable
 fun UserManagementFloatingActionButton(
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleMultiSelect: (() -> Unit)? = null
 ) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select Users", "user_multiple_select"),
@@ -46,7 +47,9 @@ fun UserManagementFloatingActionButton(
     NavigationActionButton(
         navController = navController,
         items = actionButtonItemList,
-        modifier = modifier
+        modifier = modifier,
+        onToggleMultiSelect = onToggleMultiSelect
+
     )
 }
 
@@ -55,7 +58,9 @@ fun UserManagementFloatingActionButton(
 fun NavigationActionButton(
     navController: NavController,
     items: List<ActionButtonItem>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleMultiSelect: (() -> Unit)? = null
+
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -79,15 +84,22 @@ fun NavigationActionButton(
                         item = item,
                         isSelected = isSelected,
                         onClick = {
-                            if (currentDestination?.destination?.route != item.route) {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                            if (item.route == "user_multiple_select") {
+                                // 多选按钮直接触发回调，不导航
+                                onToggleMultiSelect?.invoke()
+                            } else {
+                                // 其他按钮正常导航
+                                if (currentDestination?.destination?.route != item.route) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             }
+                            expanded = false
                         },
                         modifier = Modifier
                     )

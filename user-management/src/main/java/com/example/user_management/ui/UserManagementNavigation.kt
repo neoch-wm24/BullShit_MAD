@@ -8,6 +8,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.user_management.ui.screens.SearchUserScreen
 import com.example.user_management.ui.screens.CustomerDetailScreen
 import com.example.user_management.ui.screens.AddUserScreen
+import com.example.user_management.ui.screens.EditUserScreen
+
 
 @Composable
 fun UserManagementNavHost(
@@ -32,6 +34,16 @@ fun UserManagementNavHost(
             val customerId = backStackEntry.arguments?.getString("customerId")
             customerId?.let {
                 CustomerDetailScreen(
+                    navController = localNavController,
+                    customerId = it
+                )
+            }
+        }
+
+        composable("edit_user/{customerId}") { backStackEntry ->
+            val customerId = backStackEntry.arguments?.getString("customerId")
+            customerId?.let {
+                EditUserScreen(
                     navController = localNavController,
                     customerId = it
                 )
