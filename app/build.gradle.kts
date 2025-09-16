@@ -57,7 +57,7 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(project(":main-screen"))
     implementation(project(":delivery-and-transportation-management"))
-    implementation(project(":order-and-parcel-management"))
+    implementation(project(":order-management"))
     implementation(project(":user-management"))
     implementation(project(":warehouse-management"))
     implementation(project(":core-ui"))

@@ -14,6 +14,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.core_ui.components.BottomNavBar
 import com.example.core_ui.components.PageTitleBar
+import com.example.core_ui.components.ScanScreen
 import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
 import com.example.main_screen.ui.ProfilePage
@@ -132,9 +133,8 @@ fun MyAppNavigation(
                 )
             }
             composable("scan") {
-                androidx.compose.material3.Text(
-                    text = "Scan Screen - Coming Soon",
-                    modifier = Modifier.fillMaxSize()
+                ScanScreen(
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
         }

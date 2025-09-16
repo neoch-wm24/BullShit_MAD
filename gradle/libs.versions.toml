@@ -20,6 +20,12 @@ zxing-embedded = "4.3.0"
 hashids = "1.0.3"
 foundation = "1.9.1"
 
+cameraCore = "1.4.1"
+cameraMlkitVision = "1.4.1"
+camerax = "1.4.1"
+mlkit-barcode-scanning = "17.3.0"
+accompanistPermissions = "0.34.0"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
@@ -48,6 +54,15 @@ zxing-embedded = { module = "com.journeyapps:zxing-android-embedded", version.re
 hashids = { group = "org.hashids", name = "hashids", version.ref = "hashids" }
 androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version = "6.6.7" }
+
+camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraMlkitVision" }
+camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode-scanning" }
+#For the permission
+accompanistPermissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 
 
 
