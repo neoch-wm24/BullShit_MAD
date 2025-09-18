@@ -149,7 +149,7 @@ fun ScanUi() {
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                listOf("Scan", "Pay", "Receive").forEach { tab ->
+                listOf("In-Stock", "Out-Stock", "Transfer").forEach { tab ->
                     Button(
                         onClick = { selectedTab = tab },
                         modifier = Modifier
