@@ -12,8 +12,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.core_ui.components.BottomNavBar
-import com.example.core_ui.components.PageTitleBar
+import com.example.core_ui.components.BottomBar
+import com.example.core_ui.components.TopBar
 import com.example.core_ui.components.ScanScreen
 import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
@@ -42,12 +42,12 @@ fun MyAppNavigation(
         modifier = modifier,
         topBar = {
             if (currentRoute != "login") {
-                PageTitleBar(navController = navController)
+                TopBar(navController = navController)
             }
         },
         bottomBar = {
             if (currentRoute != "login") {
-                BottomNavBar(navController = navController)
+                BottomBar(navController = navController)
             }
         }
     ) { innerPadding ->
