@@ -52,10 +52,18 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.runtime.livedata)
+
+    //qr code
     implementation(libs.zxing.core)
     implementation(libs.zxing.embedded)
     implementation(libs.hashids)
-    implementation(libs.androidx.material.icons.extended)
+
+    //fire base
+    implementation(libs.androidx.runtime.livedata)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore.ktx)
+
+    //module
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))
     implementation(project(":core-data"))
