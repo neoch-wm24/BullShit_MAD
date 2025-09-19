@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import com.example.logistic_management_application.ui.theme.LogisticManagementApplicationTheme
+import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.main_screen.viewmodel.AuthViewModel
 
 class MainActivity : ComponentActivity() {

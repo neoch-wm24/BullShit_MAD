@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.example.core_ui.components.BottomNavBar
-import com.example.core_ui.components.PageTitleBar
+import com.example.core_ui.components.BottomBar
+import com.example.core_ui.components.TopBar
 import com.example.core_ui.components.SearchBar
 import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.order_and_parcel_management.ui.components.FloatingActionButton
@@ -225,10 +225,10 @@ private fun OrderAndParcelWithNavigationPreview() {
                 .fillMaxSize()
                 .background(Color(0xFFF8F8F8)),
             topBar = {
-                PageTitleBar(navController = navController)
+                TopBar(navController = navController)
             },
             bottomBar = {
-                BottomNavBar(navController = navController)
+                BottomBar(navController = navController)
             }
         ) { innerPadding ->
             SearchOrderAndParcelScreen(
