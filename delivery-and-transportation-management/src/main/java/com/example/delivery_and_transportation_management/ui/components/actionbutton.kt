@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
@@ -51,7 +52,8 @@ fun ActionButtonMenu(
 ) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select", "multiple_select"),
-        ActionButtonItem(Icons.Default.Add, "Add", "add_transportation")
+        ActionButtonItem(Icons.Default.Add, "Add Transportation", "add_transportation"),
+        ActionButtonItem(Icons.Default.DateRange, "Schedule", "delivery_schedule") // 📅 New
     )
 
     NavigationActionButton(
@@ -88,10 +90,8 @@ fun NavigationActionButton(
                         isSelected = isSelected,
                         onClick = {
                             if (item.route == "multiple_select") {
-                                // 切换多选模式
                                 onToggleMultiSelect?.invoke()
                             } else {
-                                // 导航到 Add 页面
                                 navigateToRoute(
                                     navController,
                                     item.route,
@@ -104,7 +104,7 @@ fun NavigationActionButton(
                 }
             }
 
-            // 主按钮（展开/收起）
+            // Main toggle button
             ActionButton(
                 item = ActionButtonItem(
                     icon = if (expanded) Icons.Default.Close else Icons.Default.Build,

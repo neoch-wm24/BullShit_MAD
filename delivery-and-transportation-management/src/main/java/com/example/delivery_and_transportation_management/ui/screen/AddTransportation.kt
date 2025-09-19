@@ -1,15 +1,12 @@
 package com.example.delivery_and_transportation_management.ui.screen
 
-import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -28,21 +25,7 @@ fun AddTransportationScreen(
     var expanded by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("Car") }
 
-    val vehicleTypes = listOf("Car", "Van", "Sky", "Air")
-
-    // 日期选择
-    var selectedDate by remember { mutableStateOf("") }
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
-            selectedDate = "$year-${month + 1}-$dayOfMonth"
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
+    val vehicleTypes = listOf("Car", "Van", "Air", "Sea")
 
     Scaffold(
         topBar = {
@@ -113,40 +96,22 @@ fun AddTransportationScreen(
                 }
             }
 
-            // 📅 日期选择 - Fixed icon
-            OutlinedTextField(
-                value = selectedDate,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Delivery Date") },
-                placeholder = { Text("Select date") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    IconButton(onClick = { datePickerDialog.show() }) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = "Pick Date"
-                        )
-                    }
-                }
-            )
-
             Button(
                 onClick = {
-                    if (plateNumber.isNotBlank() && driverName.isNotBlank() && selectedDate.isNotBlank()) {
+                    if (plateNumber.isNotBlank() && driverName.isNotBlank()) {
                         val newDelivery = Delivery(
                             id = UUID.randomUUID().toString(),
                             driverName = driverName,
                             type = selectedType,
-                            date = selectedDate,
+                            date = "", // 🚫 no date here, schedule will set it later
                             plateNumber = plateNumber
                         )
                         onSave(newDelivery)
-                        // Navigation is handled by the caller (NavHost) to avoid double pop
+                        navController.popBackStack() // go back after saving
                     }
                 },
                 modifier = Modifier.align(Alignment.End),
-                enabled = plateNumber.isNotBlank() && driverName.isNotBlank() && selectedDate.isNotBlank()
+                enabled = plateNumber.isNotBlank() && driverName.isNotBlank()
             ) {
                 Text("Save")
             }

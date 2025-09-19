@@ -14,6 +14,7 @@ import com.example.delivery_and_transportation_management.ui.screen.DeliveryDeta
 import com.example.delivery_and_transportation_management.ui.screen.DeliveryScreen
 import com.example.delivery_and_transportation_management.ui.screen.EditDeliveryScreen
 import androidx.compose.material3.Text
+import com.example.delivery_and_transportation_management.ui.screen.DeliveryScheduleScreen
 
 @Composable
 fun DeliveryAndTransportationNavHost(
@@ -90,5 +91,13 @@ fun DeliveryAndTransportationNavHost(
                 Text(text = "Delivery not found")
             }
         }
+        composable("delivery_schedule") {
+            DeliveryScheduleScreen(
+                deliveries = deliveryViewModel.deliveries,
+                deliveryViewModel = deliveryViewModel,
+                navController = navController
+            )
+        }
+
     }
 }
