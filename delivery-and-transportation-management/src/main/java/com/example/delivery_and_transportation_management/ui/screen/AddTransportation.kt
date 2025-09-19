@@ -107,7 +107,7 @@ fun AddTransportationScreen(
                             plateNumber = plateNumber
                         )
                         onSave(newDelivery)
-                        navController.popBackStack() // go back after saving
+                        // Don't navigate here - let the navigation host handle it
                     }
                 },
                 modifier = Modifier.align(Alignment.End),
