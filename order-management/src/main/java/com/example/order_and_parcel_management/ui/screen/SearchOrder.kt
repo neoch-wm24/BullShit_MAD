@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -20,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.core_ui.components.BottomBar
 import com.example.core_ui.components.TopBar
 import com.example.core_ui.components.SearchBar
+import com.example.core_ui.components.FilterBy   // ✅ 用 core_ui 的 FilterBy
 import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.order_and_parcel_management.ui.components.FloatingActionButton
 import com.example.core_data.ParcelDataManager
@@ -39,7 +39,6 @@ fun SearchOrderAndParcelScreen(
 ) {
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
-    var isSearchActive by remember { mutableStateOf(false) }
 
     // Get real data from ParcelDataManager with proper reactivity
     val allOrders by remember {
@@ -68,29 +67,29 @@ fun SearchOrderAndParcelScreen(
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+                .fillMaxWidth()
+                .padding(16.dp)
                 .background(Color.White)
         ) {
             // Search Bar
             SearchBar(
-                searchText = searchText,
-                onSearchTextChange = {
-                    searchText = it
-                    isSearchActive = it.isNotEmpty()
-                },
-                onClearSearch = {
-                    searchText = ""
-                    isSearchActive = false
-                },
-                isSearchActive = isSearchActive
+                value = searchText,
+                onValueChange = { searchText = it },
+                label = "Search Order",
+                placeholder = "Order ID",
+                modifier = Modifier.fillMaxWidth()
             )
 
-            // Filter By dropdown
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ✅ 使用 core_ui 的 FilterBy
             FilterBy(
                 selectedFilter = selectedFilter,
+                options = listOf("name (A~Z)", "name (Z~A)", "Idle Rak", "Non-Idle Rak"),
                 onFilterChange = { selectedFilter = it }
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (orders.isEmpty()) {
                 // 没有订单时显示提示
@@ -145,71 +144,6 @@ fun OrderListItem(order: OrderSummary, onClick: () -> Unit) {
             Text("寄件者: ${order.senderName}")
             Text("收件者: ${order.receiverName}")
             Text("包裹数量: ${order.parcelCount}")
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FilterBy(
-    selectedFilter: String,
-    onFilterChange: (String) -> Unit
-) {
-    val options = listOf(
-        "name (A~Z)", "name (Z~A)",
-        "Idle Rak", "Non-Idle Rak"
-    )
-    var isExpanded by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Filter By:",
-                modifier = Modifier
-                    .weight(0.4f)
-                    .padding(horizontal = 5.dp),
-                fontSize = 16.sp
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = isExpanded,
-                onExpandedChange = { isExpanded = !isExpanded },
-                modifier = Modifier.weight(1f)
-            ) {
-                TextField(
-                    value = selectedFilter,
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth(),
-                    textStyle = TextStyle(lineHeight = 24.sp),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent
-                    )
-                )
-
-                ExposedDropdownMenu(
-                    expanded = isExpanded,
-                    onDismissRequest = { isExpanded = false }
-                ) {
-                    options.forEach { text ->
-                        DropdownMenuItem(
-                            text = { Text(text = text) },
-                            onClick = {
-                                onFilterChange(text)
-                                isExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
         }
     }
 }

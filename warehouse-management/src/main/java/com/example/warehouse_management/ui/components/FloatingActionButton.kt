@@ -18,12 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -56,10 +53,7 @@ data class ActionButtonItem(
 fun FloatingActionButton(navController: NavController, modifier: Modifier = Modifier) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.Default.CheckBox, "Multiple Select", "multiple_select"),
-        ActionButtonItem(Icons.Default.Add, "Add", "add_rak"),
-        ActionButtonItem(Icons.Default.ArrowForward, "In Stock", "in_stock"),
-        ActionButtonItem(Icons.Default.ArrowBack, "Out Stock", "out_stock"),
-        ActionButtonItem(Icons.Default.SwapHoriz, "Transfer Stock", "transfer_stock")
+        ActionButtonItem(Icons.Default.Add, "Add", "add_rak")
     )
 
     NavigationActionButton(
