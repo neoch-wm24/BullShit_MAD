@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,12 +21,20 @@ fun AddTransportationScreen(
     navController: NavController,
     onSave: (Delivery) -> Unit
 ) {
-    var plateNumber by remember { mutableStateOf("") }
-    var driverName by remember { mutableStateOf("") }
-    var expanded by remember { mutableStateOf(false) }
-    var selectedType by remember { mutableStateOf("Car") }
+    var plateNumber by rememberSaveable { mutableStateOf("") }
+    var driverName by rememberSaveable { mutableStateOf("") }
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var selectedType by rememberSaveable { mutableStateOf("Car") }
 
     val vehicleTypes = listOf("Car", "Van", "Air", "Sea")
+
+    // Validation function for plate number
+    fun isValidPlateNumber(plate: String): Boolean {
+        val regex = Regex("^[A-Za-z]{1,3}[0-9]{1,4}$")
+        return plate.matches(regex)
+    }
+
+    val isPlateNumberValid = plateNumber.isBlank() || isValidPlateNumber(plateNumber)
 
     Scaffold(
         topBar = {
@@ -51,8 +60,20 @@ fun AddTransportationScreen(
         ) {
             OutlinedTextField(
                 value = plateNumber,
-                onValueChange = { plateNumber = it },
+                onValueChange = { plateNumber = it.uppercase() }, // Convert to uppercase for consistency
                 label = { Text("Plate Number") },
+                placeholder = { Text("e.g., A123 or ABC123") },
+                isError = !isPlateNumberValid,
+                supportingText = {
+                    if (!isPlateNumberValid) {
+                        Text(
+                            "Plate number must be 1-3 letters followed by 1-4 numbers (e.g., A123, ABC123)",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        Text("Format: 1-3 letters + 1-4 numbers")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -98,7 +119,7 @@ fun AddTransportationScreen(
 
             Button(
                 onClick = {
-                    if (plateNumber.isNotBlank() && driverName.isNotBlank()) {
+                    if (plateNumber.isNotBlank() && driverName.isNotBlank() && isValidPlateNumber(plateNumber)) {
                         val newDelivery = Delivery(
                             id = UUID.randomUUID().toString(),
                             driverName = driverName,
@@ -111,7 +132,7 @@ fun AddTransportationScreen(
                     }
                 },
                 modifier = Modifier.align(Alignment.End),
-                enabled = plateNumber.isNotBlank() && driverName.isNotBlank()
+                enabled = plateNumber.isNotBlank() && driverName.isNotBlank() && isValidPlateNumber(plateNumber)
             ) {
                 Text("Save")
             }

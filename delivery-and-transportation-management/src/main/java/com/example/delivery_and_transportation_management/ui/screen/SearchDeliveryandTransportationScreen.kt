@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,9 +34,9 @@ fun SearchDeliveryandTransportationScreen(
     val vmDeliveries by deliveryViewModel.deliveries.collectAsState()
     val actualDeliveries = deliveries ?: vmDeliveries
 
-    var isMultiSelectMode by remember { mutableStateOf(false) }
-    var selectedItems by remember { mutableStateOf(setOf<Delivery>()) }
-    var searchQuery by remember { mutableStateOf("") }
+    var isMultiSelectMode by rememberSaveable { mutableStateOf(false) }
+    var selectedItems by rememberSaveable { mutableStateOf(setOf<Delivery>()) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val filteredDeliveries = remember(searchQuery, actualDeliveries) {
         if (searchQuery.isBlank()) actualDeliveries else actualDeliveries.filter {

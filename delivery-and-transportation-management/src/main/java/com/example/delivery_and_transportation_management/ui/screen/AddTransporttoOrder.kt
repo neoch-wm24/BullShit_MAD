@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,7 +35,7 @@ fun AddTransportToOrderScreen(
     navController: NavController,
     onAssignOrders: (Set<String>) -> Unit // Callback to assign selected orders
 ) {
-    var selectedOrders by remember { mutableStateOf(setOf<String>()) }
+    var selectedOrders by rememberSaveable { mutableStateOf(setOf<String>()) }
 
     // Get the selected transports for display
     val selectedTransports = deliveries.filter { it.id in selectedTransportIds }
@@ -75,11 +76,11 @@ fun AddTransportToOrderScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Text(
-                            "📅 Date: $selectedDate",
+                            "Date: $selectedDate",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            "🚚 Transports: ${selectedTransports.size} selected",
+                            "Transports: ${selectedTransports.size} selected",
                             style = MaterialTheme.typography.bodyMedium
                         )
 
@@ -123,7 +124,7 @@ fun AddTransportToOrderScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            "⚠️ No orders available. Go to order management to create some orders first.",
+                            "No orders available. Go to order management to create some orders first.",
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.bodyMedium
                         )

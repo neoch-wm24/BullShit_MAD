@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,8 +25,8 @@ fun DeliveryScheduleScreen(
     deliveryViewModel: DeliveryViewModel,
     navController: NavController
 ) {
-    var selectedDate by remember { mutableStateOf("") }
-    var selectedTransportations by remember { mutableStateOf(setOf<String>()) }
+    var selectedDate by rememberSaveable { mutableStateOf("") }
+    var selectedTransportations by rememberSaveable { mutableStateOf(setOf<String>()) }
 
     Scaffold(
         topBar = {
@@ -64,6 +65,8 @@ fun DeliveryScheduleScreen(
                                 CalendarView(context).apply {
                                     val today = Calendar.getInstance()
                                     date = today.timeInMillis
+                                    // Set minimum date to today (prevent past dates)
+                                    minDate = today.timeInMillis
                                     setOnDateChangeListener { _, year, month, dayOfMonth ->
                                         selectedDate = String.format(
                                             Locale.getDefault(),
