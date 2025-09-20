@@ -1,4 +1,4 @@
-package com.example.order_and_parcel_management
+package com.example.order_management
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

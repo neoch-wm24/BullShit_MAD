@@ -1,4 +1,4 @@
-package com.example.order_and_parcel_management.ui.screen
+package com.example.order_management.ui.screen
 
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
 import androidx.navigation.NavController
-import com.example.order_and_parcel_management.ui.screen.OrderIdGenerator.generateOrderId
+import com.example.order_management.ui.screen.OrderIdGenerator.generateOrderId
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -69,13 +69,12 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
 
-// -------------------- 数据类 --------------------
+/* ----------------------------------------- Data Class ----------------------------------------- */
 data class Parcel(
     val id: String = "",
     val description: String = "",
     val weight: String = "",
     val dimensions: String = "",
-    val value: String = ""
 )
 
 data class Order(
@@ -87,9 +86,7 @@ data class Order(
     val cost: Double = 0.0
 )
 
-
-
-// -------------------- Firestore 保存函数 --------------------
+/* ----------------------------------- Save Data To Firestore ----------------------------------- */
 fun saveParcelToFirestore(parcel: Parcel, onComplete: (String) -> Unit) {
     val db = FirebaseFirestore.getInstance()
     val docRef = db.collection("parcels").document()
@@ -98,7 +95,7 @@ fun saveParcelToFirestore(parcel: Parcel, onComplete: (String) -> Unit) {
         "id" to parcelId,
         "description" to parcel.description,
         "weight" to parcel.weight,
-        "size" to parcel.dimensions
+        "dimensions" to parcel.dimensions
     )
     docRef.set(data).addOnSuccessListener { onComplete(parcelId) }
 }
@@ -116,7 +113,7 @@ fun saveOrderToFirestore(order: Order) {
     db.collection("orders").document(order.id).set(data)
 }
 
-// -------------------- UI --------------------
+/* --------------------------------------------- UI --------------------------------------------- */
 @Composable
 fun AddOrderScreen(
     modifier: Modifier = Modifier,
@@ -539,12 +536,6 @@ fun AddParcelDialog(
                     value = parcel.dimensions,
                     onValueChange = { onParcelChange(parcel.copy(dimensions = it)) },
                     label = { Text("尺寸") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = parcel.value,
-                    onValueChange = { onParcelChange(parcel.copy(value = it)) },
-                    label = { Text("价值 (RM)") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

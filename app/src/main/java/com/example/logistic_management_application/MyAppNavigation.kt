@@ -21,7 +21,7 @@ import com.example.main_screen.ui.ProfilePage
 import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
-import com.example.order_and_parcel_management.orderNavigation
+import com.example.order_management.orderNavigation
 import com.example.user_management.userNavigation
 import com.example.warehouse_management.warehouseNavigation
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel

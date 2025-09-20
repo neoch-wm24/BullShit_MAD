@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.order_and_parcel_management"
+    namespace = "com.example.order_management"
     compileSdk = 36
 
     defaultConfig {

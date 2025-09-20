@@ -1,4 +1,4 @@
-package com.example.order_and_parcel_management.ui.components
+package com.example.order_management.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*

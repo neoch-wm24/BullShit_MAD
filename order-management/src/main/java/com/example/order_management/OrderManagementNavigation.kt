@@ -1,4 +1,4 @@
-package com.example.order_and_parcel_management
+package com.example.order_management
 
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
@@ -6,10 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.order_and_parcel_management.ui.screen.AddOrderScreen
-import com.example.order_and_parcel_management.ui.screen.OrderDetailScreen
-import com.example.order_and_parcel_management.ui.screen.SearchOrderAndParcelScreen
-import com.example.order_and_parcel_management.ui.screen.SelectOrderandParcelScreen
+import com.example.order_management.ui.screen.AddOrderScreen
+import com.example.order_management.ui.screen.OrderDetailScreen
+import com.example.order_management.ui.screen.SearchOrderAndParcelScreen
+import com.example.order_management.ui.screen.SelectOrderandParcelScreen
 
 fun NavGraphBuilder.orderNavigation(navController: NavHostController) {
     // Order 相关页面

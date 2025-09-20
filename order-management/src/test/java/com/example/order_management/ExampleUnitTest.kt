@@ -1,4 +1,4 @@
-package com.example.order_and_parcel_management
+package com.example.order_management
 
 import org.junit.Test
 
