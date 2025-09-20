@@ -20,6 +20,7 @@ import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.ui.components.ActionButtonMenu
 import androidx.compose.runtime.collectAsState
+import com.example.core_ui.components.SearchBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,12 +54,11 @@ fun SearchDeliveryandTransportationScreen(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                OutlinedTextField(
+                SearchBar(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    label = { Text("Search Deliveries") },
-                    placeholder = { Text("Search by plate, driver, type, date, or ID") },
+                    label = "Search Deliveries",
+                    placeholder = "plate, driver, type, date, or ID",
                     modifier = Modifier.fillMaxWidth()
                 )
             }
