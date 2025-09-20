@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.example.core_data.RakInfo
-import com.example.core_data.RakManager
+import com.example.core_data.RackInfo
+import com.example.core_data.RackManager
 import com.example.core_ui.components.SearchBar
 import com.example.core_ui.components.FilterBy
 import com.example.warehouse_management.ui.components.FloatingActionButton
@@ -28,9 +28,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchRakScreen(
+fun SearchRackScreen(
     navController: NavHostController,
-    onNavigateToRakInfo: ((String) -> Unit)? = null
+    onNavigateToRackInfo: ((String) -> Unit)? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -38,22 +38,22 @@ fun SearchRakScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
 
-    val rakList = RakManager.rakList
+    val rackList = RackManager.rackList
 
-    val filteredRakList = remember(rakList, searchText, selectedFilter) {
+    val filteredRackList = remember(rackList, searchText, selectedFilter) {
         var result = if (searchText.isBlank()) {
-            rakList
+            rackList
         } else {
-            rakList.filter { rak ->
-                rak.name.lowercase().startsWith(searchText.lowercase())
+            rackList.filter { rack ->
+                rack.name.lowercase().startsWith(searchText.lowercase())
             }
         }
 
         result = when (selectedFilter) {
             "name (A~Z)" -> result.sortedBy { it.name.lowercase() }
             "name (Z~A)" -> result.sortedByDescending { it.name.lowercase() }
-            "Idle Rak" -> result.filter { it.state.equals("Idle", ignoreCase = true) }
-            "Non-Idle Rak" -> result.filter { !it.state.equals("Idle", ignoreCase = true) }
+            "Idle Rack" -> result.filter { it.state.equals("Idle", ignoreCase = true) }
+            "Non-Idle Rack" -> result.filter { !it.state.equals("Idle", ignoreCase = true) }
             else -> result
         }
 
@@ -82,7 +82,7 @@ fun SearchRakScreen(
             // ✅ 使用 core_ui 的 FilterBy
             FilterBy(
                 selectedFilter = selectedFilter,
-                options = listOf("name (A~Z)", "name (Z~A)", "Idle Rak", "Non-Idle Rak"),
+                options = listOf("name (A~Z)", "name (Z~A)", "Idle Rack", "Non-Idle Rack"),
                 onFilterChange = { newFilter ->
                     selectedFilter = newFilter
                     scope.launch {
@@ -100,7 +100,7 @@ fun SearchRakScreen(
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (filteredRakList.isEmpty()) {
+                if (filteredRackList.isEmpty()) {
                     item {
                         Text(
                             text = if (searchText.isBlank()) {
@@ -117,7 +117,7 @@ fun SearchRakScreen(
                         )
                     }
                 } else {
-                    items(filteredRakList) { rak: RakInfo ->
+                    items(filteredRackList) { rack: RackInfo ->
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -127,18 +127,18 @@ fun SearchRakScreen(
                                 .padding(12.dp)
                                 .clickable {
                                     try {
-                                        if (onNavigateToRakInfo != null) {
-                                            onNavigateToRakInfo(rak.id)
+                                        if (onNavigateToRackInfo != null) {
+                                            onNavigateToRackInfo(rack.id)
                                         } else {
-                                            navController.navigate("rak_information/${rak.id}")
+                                            navController.navigate("rack_information/${rack.id}")
                                         }
                                     } catch (e: Exception) {
-                                        android.util.Log.e("SearchRak", "Navigation failed", e)
+                                        android.util.Log.e("SearchRack", "Navigation failed", e)
                                     }
                                 }
                         ) {
                             Text(
-                                text = "${rak.name}",
+                                text = "${rack.name}",
                                 fontSize = 20.sp,
                                 color = Color.Black,
                                 modifier = Modifier.padding(bottom = 4.dp)
@@ -149,12 +149,12 @@ fun SearchRakScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Layer: ${rak.layer}",
+                                    text = "Layer: ${rack.layer}",
                                     fontSize = 14.sp,
                                     color = Color.DarkGray
                                 )
                                 Text(
-                                    text = "State: ${rak.state}",
+                                    text = "State: ${rack.state}",
                                     fontSize = 14.sp,
                                     color = Color.DarkGray
                                 )
@@ -176,7 +176,7 @@ fun SearchRakScreen(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun SearchRakScreenPreview() {
+fun SearchRackScreenPreview() {
     val navController = rememberNavController()
-    SearchRakScreen(navController = navController)
+    SearchRackScreen(navController = navController)
 }

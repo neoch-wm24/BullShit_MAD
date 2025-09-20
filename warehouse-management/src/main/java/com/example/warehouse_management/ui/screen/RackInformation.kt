@@ -20,38 +20,38 @@ import com.example.core_data.*
 import java.util.Locale
 
 @Composable
-fun RakInformationScreen(
+fun RackInformationScreen(
     navController: NavController,
-    rakId: String,
+    rackId: String,
     modifier: Modifier = Modifier
 ) {
-    // ① 判断是否有 Rak 数据
-    if (RakManager.rakList.isEmpty()) {
+    // ① 判断是否有 Rack 数据
+    if (RackManager.rackList.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("No Rak data available.", color = Color.Gray, fontSize = 18.sp)
+            Text("No Rack data available.", color = Color.Gray, fontSize = 18.sp)
         }
         return
     }
 
-    // ② 空 rakId 直接返回上页
-    if (rakId.isBlank()) {
+    // ② 空 rackId 直接返回上页
+    if (rackId.isBlank()) {
         LaunchedEffect(Unit) {
             navController.popBackStack()
         }
         return
     }
 
-    // ③ 查找 Rak 数据
-    val rakInfo = RakManager.getRakById(rakId)
-    if (rakInfo == null) {
+    // ③ 查找 Rack 数据
+    val rackInfo = RackManager.getRackById(rackId)
+    if (rackInfo == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Rak not found.", color = Color.Gray, fontSize = 18.sp)
+            Text("Rack not found.", color = Color.Gray, fontSize = 18.sp)
         }
         return
     }
@@ -64,10 +64,10 @@ fun RakInformationScreen(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Rak Information Title (moved out of card)
+        // Rack Information Title (moved out of card)
         item {
             Text(
-                text = "Rak Information",
+                text = "Rack Information",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFFF69B4),
@@ -75,9 +75,9 @@ fun RakInformationScreen(
             )
         }
 
-        // Rak Information Card (without title)
+        // Rack Information Card (without title)
         item {
-            RakInfoCard(rakInfo = rakInfo)
+            RackInfoCard(rackInfo = rackInfo)
         }
 
         // Add parcel information if there are any parcels
@@ -105,7 +105,7 @@ fun RakInformationScreen(
 }
 
 @Composable
-private fun RakInfoCard(rakInfo: RakInfo) {
+private fun RackInfoCard(rackInfo: RackInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -114,11 +114,11 @@ private fun RakInfoCard(rakInfo: RakInfo) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            InfoRow("Rak Name:", rakInfo.name)
+            InfoRow("Rack Name:", rackInfo.name)
             DividerSpacer()
-            InfoRow("Number of Layers:", "${rakInfo.layer}")
+            InfoRow("Layers:", "${rackInfo.layer}")
             DividerSpacer()
-            InfoRow("Rak State:", rakInfo.state)
+            InfoRow("Rack State:", rackInfo.state)
         }
     }
 }
@@ -272,7 +272,7 @@ private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun RakInformationScreenPreview() {
+fun RackInformationScreenPreview() {
     val navController = rememberNavController()
-    RakInformationScreen(navController = navController, rakId = "SampleRakId")
+    RackInformationScreen(navController = navController, rackId = "SampleRackId")
 }

@@ -18,11 +18,11 @@ import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddRakScreen(
+fun AddRackScreen(
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    var newRakName by remember { mutableStateOf("") }
+    var newRackName by remember { mutableStateOf("") }
     var selectedLayer by remember { mutableIntStateOf(1) }
     var selectedState by remember { mutableStateOf("Idle") }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -39,9 +39,9 @@ fun AddRakScreen(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.Top  // 👈 普通排列
         ) {
-            RakInputForm(
-                rakName = newRakName,
-                onRakNameChange = { newRakName = it },
+            RackInputForm(
+                rackName = newRackName,
+                onRackNameChange = { newRackName = it },
                 selectedLayer = selectedLayer,
                 onSelectedLayerChange = { selectedLayer = it },
                 selectedState = selectedState,
@@ -53,39 +53,39 @@ fun AddRakScreen(
 
             AddButton(
                 onAddClick = {
-                    if (newRakName.isBlank()) {
+                    if (newRackName.isBlank()) {
                         scope.launch {
-                            snackbarHostState.showSnackbar("Please enter a Rak name")
+                            snackbarHostState.showSnackbar("Please enter a Rack name")
                         }
                         return@AddButton
                     }
 
                     try {
-                        val newRak = RakInfo(
+                        val newRack = RackInfo(
                             id = UUID.randomUUID().toString(),
-                            name = newRakName.trim(),
+                            name = newRackName.trim(),
                             layer = selectedLayer,
                             state = selectedState
                         )
-                        RakManager.addRak(newRak)
+                        RackManager.addRack(newRack)
 
                         scope.launch {
-                            snackbarHostState.showSnackbar("Rak added successfully!")
+                            snackbarHostState.showSnackbar("Rack added successfully!")
                             kotlinx.coroutines.delay(500)
                             try {
-                                navController.navigate("searchrak") {
-                                    popUpTo("searchrak") { inclusive = true }
+                                navController.navigate("searchrack") {
+                                    popUpTo("searchrack") { inclusive = true }
                                 }
                             } catch (navError: Exception) {
-                                println("Navigation error after adding rak: ${navError.message}")
+                                println("Navigation error after adding rack: ${navError.message}")
                                 navController.popBackStack()
                             }
                         }
                     } catch (e: Exception) {
                         scope.launch {
-                            snackbarHostState.showSnackbar("Error adding Rak: ${e.message}")
+                            snackbarHostState.showSnackbar("Error adding Rack: ${e.message}")
                         }
-                        println("Error adding Rak: ${e.message}")
+                        println("Error adding Rack: ${e.message}")
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -96,9 +96,9 @@ fun AddRakScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RakInputForm(
-    rakName: String,
-    onRakNameChange: (String) -> Unit,
+fun RackInputForm(
+    rackName: String,
+    onRackNameChange: (String) -> Unit,
     selectedLayer: Int,
     onSelectedLayerChange: (Int) -> Unit,
     selectedState: String,
@@ -114,7 +114,7 @@ fun RakInputForm(
     ) {
         val labelWidth = 100.dp // ✅ 统一 label 宽度
 
-        // Rak Name Field
+        // Rack Name Field
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -126,8 +126,8 @@ fun RakInputForm(
             )
 
             OutlinedTextField(
-                value = rakName,
-                onValueChange = onRakNameChange,
+                value = rackName,
+                onValueChange = onRackNameChange,
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp),
@@ -189,7 +189,7 @@ fun RakInputForm(
             }
         }
 
-        // Rak State field
+        // Rack State field
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -263,7 +263,7 @@ private fun AddButton(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun AddRakScreenPreview() {
+fun AddRackScreenPreview() {
     val navController = rememberNavController()
-    AddRakScreen(navController = navController)
+    AddRackScreen(navController = navController)
 }

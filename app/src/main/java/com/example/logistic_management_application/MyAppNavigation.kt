@@ -19,8 +19,8 @@ import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
 import com.example.main_screen.ui.ProfilePage
 import com.example.warehouse_management.WarehouseManagementNavHost
-import com.example.warehouse_management.ui.screen.AddRakScreen
-import com.example.warehouse_management.ui.screen.RakInformationScreen
+import com.example.warehouse_management.ui.screen.AddRackScreen
+import com.example.warehouse_management.ui.screen.RackInformationScreen
 import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
@@ -118,16 +118,16 @@ fun MyAppNavigation(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            composable("rak_information/{rakId}") { backStackEntry ->
-                val rakId = backStackEntry.arguments?.getString("rakId") ?: ""
-                RakInformationScreen(
+            composable("rack_information/{rackId}") { backStackEntry ->
+                val rackId = backStackEntry.arguments?.getString("rackId") ?: ""
+                RackInformationScreen(
                     navController = navController,
-                    rakId = rakId,
+                    rackId = rackId,
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            composable("add_rak") {
-                AddRakScreen(
+            composable("add_rack") {
+                AddRackScreen(
                     navController = navController,
                     modifier = Modifier.fillMaxSize()
                 )

@@ -6,8 +6,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.warehouse_management.ui.screen.SearchRakScreen
-import com.example.warehouse_management.ui.screen.AddRakScreen
+import com.example.warehouse_management.ui.screen.SearchRackScreen
+import com.example.warehouse_management.ui.screen.AddRackScreen
 
 @Composable
 fun WarehouseManagementNavHost(
@@ -17,17 +17,17 @@ fun WarehouseManagementNavHost(
     val localNavController = rememberNavController()
     NavHost(
         navController = localNavController,
-        startDestination = "searchrak",
+        startDestination = "search_rack",
         modifier = modifier
     ){
-        composable("searchrak") {
-            SearchRakScreen(
+        composable("search_rack") {
+            SearchRackScreen(
                 navController = mainNavController, // Use main NavController for cross-module navigation
             )
         }
 
-        composable("addrak") {
-            AddRakScreen(
+        composable("add_rack") {
+            AddRackScreen(
                 navController = localNavController, // Local NavController for internal navigation
                 modifier = Modifier
             )
