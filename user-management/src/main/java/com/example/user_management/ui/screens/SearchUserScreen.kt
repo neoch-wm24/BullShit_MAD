@@ -190,7 +190,7 @@ fun SearchUserScreen(
                                             selectedItems - customer
                                         else selectedItems + customer
                                     } else {
-                                        navController.navigate("customer_detail/${customer.id}")
+                                        navController.navigate("CustomerDetails/${customer.id}")
                                     }
                                 }
                             }

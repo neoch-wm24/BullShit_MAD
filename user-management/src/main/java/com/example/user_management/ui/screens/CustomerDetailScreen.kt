@@ -167,7 +167,7 @@ fun CustomerDetailContent(
                 horizontalArrangement = Arrangement.End
             ) {
                 OutlinedButton(
-                    onClick = { navController.navigate("edit_user/${customer.id}") },
+                    onClick = { navController.navigate("Edit_User/${customer.id}") },
                     modifier = Modifier
                         .height(40.dp)
                         .widthIn(min = 90.dp),

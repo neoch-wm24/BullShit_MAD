@@ -130,7 +130,7 @@ fun SearchRakScreen(
                                         if (onNavigateToRakInfo != null) {
                                             onNavigateToRakInfo(rak.id)
                                         } else {
-                                            navController.navigate("rak_information/${rak.id}")
+                                            navController.navigate("RakDetails/${rak.id}")
                                         }
                                     } catch (e: Exception) {
                                         android.util.Log.e("SearchRak", "Navigation failed", e)

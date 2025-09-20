@@ -41,7 +41,7 @@ fun UserManagementFloatingActionButton(
 ) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select Users", "user_multiple_select"),
-        ActionButtonItem(Icons.Default.PersonAdd, "Add User", "add_user")
+        ActionButtonItem(Icons.Default.PersonAdd, "Add User", "AddUser")
     )
 
     NavigationActionButton(

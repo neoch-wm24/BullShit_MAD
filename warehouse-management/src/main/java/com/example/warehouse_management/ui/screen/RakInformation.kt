@@ -21,7 +21,6 @@ import java.util.Locale
 
 @Composable
 fun RakInformationScreen(
-    navController: NavController,
     rakId: String,
     modifier: Modifier = Modifier
 ) {
@@ -39,7 +38,6 @@ fun RakInformationScreen(
     // ② 空 rakId 直接返回上页
     if (rakId.isBlank()) {
         LaunchedEffect(Unit) {
-            navController.popBackStack()
         }
         return
     }
@@ -274,5 +272,5 @@ private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
 @Composable
 fun RakInformationScreenPreview() {
     val navController = rememberNavController()
-    RakInformationScreen(navController = navController, rakId = "SampleRakId")
+    RakInformationScreen(rakId = "SampleRakId")
 }

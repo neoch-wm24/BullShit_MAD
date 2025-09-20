@@ -37,15 +37,24 @@ import com.example.core_ui.theme.LogisticManagementApplicationTheme
 
 @Composable
 private fun getTitleByRoute(route: String?): String{
-    return when(route) {
-        "home" -> stringResource(id = R.string.home_pt)
-        "order" -> stringResource(id = R.string.order_pt)
-        "AddOrder" -> stringResource(id = R.string.add_order_pt)
-        "warehouse" -> stringResource(id = R.string.warehouse_pt)
-        "delivery" -> stringResource(id = R.string.delivery_pt)
-        "profile" -> stringResource(id = R.string.profile_pt)
-        "setting" -> stringResource(id = R.string.setting_pt)
-        "other" -> stringResource(id = R.string.other_pt)
+    return when {
+        route == "home" -> stringResource(id = R.string.home_pt)
+        route == "report" -> stringResource(id = R.string.report_pt)
+        route == "user" -> stringResource(id = R.string.user_pt)
+        route == "AddUser" -> stringResource(id = R.string.add_user_pt)
+        route?.startsWith("CustomerDetails") == true -> stringResource(id = R.string.customer_details_pt)
+        route?.startsWith("Edit_User") == true -> stringResource(id = R.string.edit_user_pt)
+        route == "order" -> stringResource(id = R.string.order_pt)
+        route == "AddOrder" -> stringResource(id = R.string.add_order_pt)
+        route?.startsWith("OrderDetails") == true -> stringResource(id = R.string.order_details_pt)
+        route == "warehouse" -> stringResource(id = R.string.warehouse_pt)
+        route == "AddRak" -> stringResource(id = R.string.add_rak_pt)
+        route?.startsWith("RakDetails") == true -> stringResource(id = R.string.rak_details_pt)
+        route == "delivery" -> stringResource(id = R.string.delivery_pt)
+        route == "scan" -> stringResource(id = R.string.scan_pt)
+        route == "profile" -> stringResource(id = R.string.profile_pt)
+        route == "setting" -> stringResource(id = R.string.setting_pt)
+        route == "other" -> stringResource(id = R.string.other_pt)
         else -> "Unknown Page"
     }
 }

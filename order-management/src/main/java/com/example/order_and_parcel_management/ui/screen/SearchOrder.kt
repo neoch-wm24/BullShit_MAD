@@ -23,6 +23,7 @@ import com.example.core_ui.components.FilterBy   // ✅ 用 core_ui 的 FilterBy
 import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.order_and_parcel_management.ui.components.FloatingActionButton
 import com.example.core_data.ParcelDataManager
+import com.google.firebase.firestore.FirebaseFirestore
 
 // 数据类
 data class OrderSummary(
@@ -40,20 +41,31 @@ fun SearchOrderAndParcelScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
 
-    // Get real data from ParcelDataManager with proper reactivity
-    val allOrders by remember {
-        derivedStateOf { ParcelDataManager.allParcelData }
-    }
+    // ✅ Firestore 实时数据
+    val db = FirebaseFirestore.getInstance()
+    var orders by remember { mutableStateOf<List<OrderSummary>>(emptyList()) }
 
-    val orders = remember(allOrders) {
-        allOrders.map { orderData ->
-            OrderSummary(
-                id = orderData.id,
-                senderName = orderData.sender.name,
-                receiverName = orderData.recipient.name,
-                parcelCount = orderData.parcels.size
-            )
-        }
+    // 🔄 使用 DisposableEffect 来管理监听
+    DisposableEffect(Unit) {
+        val listener = db.collection("orders")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    println("监听 Firestore 出错: ${e.message}")
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    orders = snapshot.documents.mapNotNull { doc ->
+                        val id = doc.getString("id") ?: return@mapNotNull null
+                        val sender = doc.getString("sender_id") ?: "未知"
+                        val receiver = doc.getString("receiver_id") ?: "未知"
+                        val parcels = (doc.get("parcel_id") as? List<*>)?.size ?: 0
+                        OrderSummary(id, sender, receiver, parcels)
+                    }
+                }
+            }
+
+        // ✅ 清理监听
+        onDispose { listener.remove() }
     }
 
     Scaffold(
@@ -67,11 +79,12 @@ fun SearchOrderAndParcelScreen(
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+                .padding(innerPadding) // ✅ 使用 contentPadding
                 .padding(16.dp)
                 .background(Color.White)
         ) {
-            // Search Bar
+            // 搜索框
             SearchBar(
                 value = searchText,
                 onValueChange = { searchText = it },
@@ -82,7 +95,7 @@ fun SearchOrderAndParcelScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ✅ 使用 core_ui 的 FilterBy
+            // 筛选器
             FilterBy(
                 selectedFilter = selectedFilter,
                 options = listOf("name (A~Z)", "name (Z~A)", "Idle Rak", "Non-Idle Rak"),
@@ -92,7 +105,6 @@ fun SearchOrderAndParcelScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (orders.isEmpty()) {
-                // 没有订单时显示提示
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -106,13 +118,12 @@ fun SearchOrderAndParcelScreen(
                     )
                 }
             } else {
-                // LazyColumn 显示订单列表
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(8.dp) // ✅ 给列表加 padding
                 ) {
                     items(
                         orders.filter {
@@ -120,7 +131,7 @@ fun SearchOrderAndParcelScreen(
                         }
                     ) { order ->
                         OrderListItem(order = order, onClick = {
-                            navController.navigate("order_detail/${order.id}")
+                            navController.navigate("OrderDetails/${order.id}")
                         })
                     }
                 }

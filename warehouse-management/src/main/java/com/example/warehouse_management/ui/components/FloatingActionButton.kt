@@ -53,7 +53,7 @@ data class ActionButtonItem(
 fun FloatingActionButton(navController: NavController, modifier: Modifier = Modifier) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.Default.CheckBox, "Multiple Select", "multiple_select"),
-        ActionButtonItem(Icons.Default.Add, "Add", "add_rak")
+        ActionButtonItem(Icons.Default.Add, "Add", "AddRak")
     )
 
     NavigationActionButton(
