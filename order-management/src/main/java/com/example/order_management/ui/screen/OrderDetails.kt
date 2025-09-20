@@ -1,99 +1,98 @@
 package com.example.order_management.ui.screen
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.FieldPath
-import android.graphics.Bitmap
-import android.graphics.Bitmap.Config
-import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
+import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import org.json.JSONObject
 
-
-// ---------------- 数据类 ----------------
-data class ParcelInfo(
-    val id: String = "",
-    val description: String = "",
-    val weight: String = "",
-    val dimensions: String = "",
-    val value: String = ""
-)
+/* ------------------- Order Detail Screen ------------------- */
 @Composable
 fun OrderDetailScreen(orderId: String) {
     val db = FirebaseFirestore.getInstance()
 
-    var senderName by remember { mutableStateOf("加载中...") }
-    var receiverName by remember { mutableStateOf("加载中...") }
-    var parcels by remember { mutableStateOf<List<ParcelInfo>>(emptyList()) }
+    var order by remember { mutableStateOf<Order?>(null) }
+    var parcels by remember { mutableStateOf<List<Parcel>>(emptyList()) }
+    var senderName by remember { mutableStateOf("Loading...") }
+    var receiverName by remember { mutableStateOf("Loading...") }
 
-    // 🔄 监听订单
+    // Firestore listeners
     DisposableEffect(orderId) {
         var parcelListener: ListenerRegistration? = null
 
         val orderListener = db.collection("orders").document(orderId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    println("获取订单失败: ${e.message}")
+                    println("Failed to get order: ${e.message}")
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
-                    val senderId = snapshot.getString("sender_id") ?: "未知"
-                    val receiverId = snapshot.getString("receiver_id") ?: "未知"
+                    val senderId = snapshot.getString("sender_id") ?: ""
+                    val receiverId = snapshot.getString("receiver_id") ?: ""
                     val parcelIds = snapshot.get("parcel_ids") as? List<String> ?: emptyList()
+                    val totalWeight = snapshot.getDouble("total_weight") ?: 0.0
+                    val cost = snapshot.getDouble("cost") ?: 0.0
 
-                    // ✅ 查询 sender 名字
-                    if (senderId != "未知") {
-                        db.collection("customers")
-                            .whereEqualTo("id", senderId)
-                            .limit(1)
-                            .get()
+                    order = Order(
+                        id = orderId,
+                        senderId = senderId,
+                        receiverId = receiverId,
+                        parcelIds = parcelIds,
+                        totalWeight = totalWeight,
+                        cost = cost
+                    )
+
+                    // Query sender
+                    if (senderId.isNotEmpty()) {
+                        db.collection("customers").whereEqualTo("id", senderId).limit(1).get()
                             .addOnSuccessListener { result ->
                                 senderName = result.documents.firstOrNull()?.getString("name") ?: senderId
                             }
                     }
 
-                    // ✅ 查询 receiver 名字
-                    if (receiverId != "未知") {
-                        db.collection("customers")
-                            .whereEqualTo("id", receiverId)
-                            .limit(1)
-                            .get()
+                    // Query receiver
+                    if (receiverId.isNotEmpty()) {
+                        db.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
                             .addOnSuccessListener { result ->
                                 receiverName = result.documents.firstOrNull()?.getString("name") ?: receiverId
                             }
                     }
 
-                    // 🔄 监听 parcels
+                    // Listen for parcels
                     parcelListener?.remove()
                     if (parcelIds.isNotEmpty()) {
                         parcelListener = db.collection("parcels")
                             .whereIn(FieldPath.documentId(), parcelIds)
                             .addSnapshotListener { result, err ->
                                 if (err != null) {
-                                    println("获取包裹失败: ${err.message}")
+                                    println("Failed to get parcels: ${err.message}")
                                     return@addSnapshotListener
                                 }
                                 if (result != null) {
                                     parcels = result.documents.map { doc ->
-                                        ParcelInfo(
+                                        Parcel(
                                             id = doc.id,
                                             description = doc.getString("description") ?: "",
                                             weight = doc.getString("weight") ?: "",
-                                            dimensions = doc.getString("dimensions") ?: "",
-                                            value = doc.getString("value") ?: ""
+                                            dimensions = doc.getString("dimensions") ?: ""
                                         )
                                     }
                                 }
@@ -110,10 +109,10 @@ fun OrderDetailScreen(orderId: String) {
         }
     }
 
-    // ✅ 缓存 QR 生成，只在依赖变化时触发
+    // QR Code
     val qrCodeBitmap by remember(orderId, senderName, receiverName, parcels) {
         mutableStateOf(
-            if (senderName != "加载中..." && receiverName != "加载中...") {
+            if (senderName != "Loading..." && receiverName != "Loading...") {
                 generateQRCode(
                     JSONObject().apply {
                         put("orderId", orderId)
@@ -128,64 +127,88 @@ fun OrderDetailScreen(orderId: String) {
         )
     }
 
-    // ---------------- UI ----------------
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("订单详情: $orderId", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text("寄件人: $senderName", fontSize = 14.sp)
-        Text("收件人: $receiverName", fontSize = 14.sp)
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // ✅ 显示二维码
-        qrCodeBitmap?.let { bmp ->
-            Image(
-                bitmap = bmp.asImageBitmap(),
-                contentDescription = "订单二维码",
-                modifier = Modifier
-                    .size(200.dp)
-                    .padding(8.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text("包裹列表 (${parcels.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD05667))
-
-        if (parcels.isEmpty()) {
-            Text("暂无包裹", color = Color.Gray, modifier = Modifier.padding(8.dp))
-        } else {
-            parcels.forEachIndexed { index, parcel ->
-                ParcelInfoItem(index = index + 1, parcel = parcel)
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
-    Card(
+    // ------------------- UI -------------------
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("$index. ${parcel.description}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            if (parcel.weight.isNotEmpty()) {
-                Text("重量: ${parcel.weight} kg", fontSize = 12.sp, color = Color.Gray)
+        item {
+            // Order ID
+            Text(
+                text = "Order ID: $orderId",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ------------------- QR Code -------------------
+            qrCodeBitmap?.let { bmp ->
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = "Order QR Code",
+                        modifier = Modifier.size(160.dp)
+                    )
+                }
             }
-            if (parcel.dimensions.isNotEmpty()) {
-                Text("尺寸: ${parcel.dimensions}", fontSize = 12.sp, color = Color.Gray)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ------------------- Customer Details -------------------
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Customer Details", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Sender: $senderName", fontSize = 14.sp)
+                    Text("Receiver: $receiverName", fontSize = 14.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Order Summary
+            order?.let {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Order Summary", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Total Weight: ${it.totalWeight} kg", fontSize = 14.sp,)
+                        Text("Shipping Fee: RM ${"%.2f".format(it.cost)}")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Parcel List (${parcels.size})", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // Parcel list
+        items(parcels.size) { index ->
+            val parcel = parcels[index]
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row {
+                        Text("${index + 1}. Parcel ID: ", fontWeight = FontWeight.Medium)
+                        Text(parcel.id, fontSize = 14.sp) // smaller font for ID
+                    }
+                    if (parcel.description.isNotEmpty()) Text("Description: ${parcel.description}", fontSize = 14.sp)
+                    if (parcel.weight.isNotEmpty()) Text("Weight: ${parcel.weight} kg", fontSize = 14.sp)
+                    if (parcel.dimensions.isNotEmpty()) Text("Dimensions: ${parcel.dimensions}", fontSize = 14.sp)
+                }
             }
         }
     }
 }
 
-/* ------------------------------------ Generate QR / Barcode ----------------------------------- */
+/* ------------------- QR Code Generator ------------------- */
 fun generateQRCode(text: String): Bitmap? {
     return try {
         val writer = QRCodeWriter()

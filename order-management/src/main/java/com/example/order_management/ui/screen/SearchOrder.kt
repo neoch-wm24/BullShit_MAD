@@ -24,7 +24,7 @@ import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.order_management.ui.components.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
 
-// 数据类
+// Data class
 data class OrderSummary(
     val id: String,
     val senderName: String,
@@ -40,16 +40,14 @@ fun SearchOrderAndParcelScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
 
-    // ✅ Firestore 实时数据
     val db = FirebaseFirestore.getInstance()
     var orders by remember { mutableStateOf<List<OrderSummary>>(emptyList()) }
 
-    // 🔄 使用 DisposableEffect 来管理监听
     DisposableEffect(Unit) {
         val listener = db.collection("orders")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    println("监听 Firestore 出错: ${e.message}")
+                    println("Firestore listener error: ${e.message}")
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
@@ -64,23 +62,23 @@ fun SearchOrderAndParcelScreen(
                     tempOrders.forEach { (ids, parcels) ->
                         val (id, senderId, receiverId) = ids
 
-                        // 查 sender
+                        // query sender
                         db.collection("customers")
                             .whereEqualTo("id", senderId)
                             .limit(1)
                             .get()
                             .addOnSuccessListener { senderSnap ->
-                                val senderName = senderSnap.documents.firstOrNull()?.getString("name") ?: "未知"
+                                val senderName = senderSnap.documents.firstOrNull()?.getString("name") ?: "Unknown"
 
-                                // 查 receiver
+                                // query receiver
                                 db.collection("customers")
                                     .whereEqualTo("id", receiverId)
                                     .limit(1)
                                     .get()
                                     .addOnSuccessListener { receiverSnap ->
-                                        val receiverName = receiverSnap.documents.firstOrNull()?.getString("name") ?: "未知"
+                                        val receiverName = receiverSnap.documents.firstOrNull()?.getString("name") ?: "Unknown"
 
-                                        // 更新 orders
+                                        // update orders
                                         orders = orders.toMutableList().apply {
                                             removeAll { it.id == id }
                                             add(
@@ -113,11 +111,11 @@ fun SearchOrderAndParcelScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding) // ✅ 使用 contentPadding
+                .padding(innerPadding)
                 .padding(16.dp)
                 .background(Color.White)
         ) {
-            // 搜索框
+            // Search bar
             SearchBar(
                 value = searchText,
                 onValueChange = { searchText = it },
@@ -128,7 +126,7 @@ fun SearchOrderAndParcelScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 筛选器
+            // Filter
             FilterBy(
                 selectedFilter = selectedFilter,
                 options = listOf("name (A~Z)", "name (Z~A)", "Idle Rack", "Non-Idle Rack"),
@@ -145,7 +143,7 @@ fun SearchOrderAndParcelScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "暂无包裹，请点击右下角 + 按钮添加",
+                        text = "No orders found, please click the + button at the bottom right to add.",
                         fontSize = 16.sp,
                         color = Color.Gray
                     )
@@ -156,7 +154,7 @@ fun SearchOrderAndParcelScreen(
                         .weight(1f)
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(8.dp) // ✅ 给列表加 padding
+                    contentPadding = PaddingValues(8.dp)
                 ) {
                     items(
                         orders.filter {
@@ -183,11 +181,11 @@ fun OrderListItem(order: OrderSummary, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text("订单号: ${order.id}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Order ID: ${order.id}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("寄件者: ${order.senderName}")
-            Text("收件者: ${order.receiverName}")
-            Text("包裹数量: ${order.parcelCount}")
+            Text("Sender: ${order.senderName}")
+            Text("Receiver: ${order.receiverName}")
+            Text("Parcels: ${order.parcelCount}")
         }
     }
 }

@@ -253,9 +253,9 @@ fun CustomerSelector(
     onCustomerSelected: (String) -> Unit
 ) {
     val db = FirebaseFirestore.getInstance()
-    var customers by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var customers by remember { mutableStateOf<List<Triple<String, String, String>>>(emptyList()) }
     var expanded by remember { mutableStateOf(false) }
-    var selectedCustomer by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var selectedCustomer by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var searchText by remember { mutableStateOf("") }
@@ -267,14 +267,13 @@ fun CustomerSelector(
             customers = snapshot.documents.mapNotNull { doc ->
                 val id = doc.getString("id") ?: doc.id
                 val name = doc.getString("name") ?: "unknown user"
-                id to name
+                val address = doc.getString("address") ?: "no address"
+                Triple(id, name, address)
             }
             isLoading = false
-            println("loading ${customers.size} customer: $customers")
         } catch (e: Exception) {
             errorMessage = "loading customer list failed: ${e.message}"
             isLoading = false
-            println("loading customer failed: ${e.message}")
         }
     }
 
@@ -379,7 +378,8 @@ fun CustomerSelector(
                         // filter customers list by search text
                         val filteredCustomers = customers.filter { customer ->
                             customer.second.contains(searchText, ignoreCase = true) ||
-                                    customer.first.contains(searchText, ignoreCase = true)
+                                    customer.first.contains(searchText, ignoreCase = true) ||
+                                    customer.third.contains(searchText, ignoreCase = true)
                         }
 
                         if (filteredCustomers.isEmpty() && searchText.isNotEmpty()) {
@@ -404,21 +404,20 @@ fun CustomerSelector(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            println("select customer: $customer") // test
                                             selectedCustomer = customer
                                             searchText = ""
                                             expanded = false
-                                            onCustomerSelected(customer.first)
+                                            onCustomerSelected(customer.first) // 传 id
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp)
                                 ) {
                                     Text(
-                                        text = customer.second,
+                                        text = customer.second, // name
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        text = "ID: ${customer.first}",
+                                        text = "Address: ${customer.third}", // address
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -488,47 +487,34 @@ fun ParcelListSection(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(12.dp)
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .fillMaxWidth()
                         ) {
+                            // 🟢 上半部分：Parcel 信息
+                            Text("Parcel ID: ${parcel.id}", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                            if (parcel.description.isNotEmpty()) {
+                                Text("Description: ${parcel.description}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (parcel.weight.isNotEmpty()) {
+                                Text("Weight: ${parcel.weight} kg", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            if (parcel.dimensions.isNotEmpty()) {
+                                Text("Dimensions: ${parcel.dimensions}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+
+                            // 🔽 下半部分：右下角 Delete 按钮
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        "Parcel ID: ${parcel.id}",
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 14.sp
-                                    )
-                                    if (parcel.description.isNotEmpty()) {
-                                        Text(
-                                            "Description: ${parcel.description}",
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    if (parcel.weight.isNotEmpty()) {
-                                        Text(
-                                            "Weight: ${parcel.weight} kg",
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    if (parcel.dimensions.isNotEmpty()) {
-                                        Text(
-                                            "Dimensions: ${parcel.dimensions}",
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
                                 TextButton(onClick = { onDeleteParcel(index) }) {
                                     Text("Delete", color = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
                     }
+
                 }
             }
         }
@@ -551,19 +537,25 @@ fun AddParcelDialog(
                     value = parcel.description,
                     onValueChange = { onParcelChange(parcel.copy(description = it)) },
                     label = { Text("Parcel's Description") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    maxLines = 1
                 )
                 OutlinedTextField(
                     value = parcel.weight,
                     onValueChange = { onParcelChange(parcel.copy(weight = it)) },
                     label = { Text("Weight (kg)") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    maxLines = 1
                 )
                 OutlinedTextField(
                     value = parcel.dimensions,
                     onValueChange = { onParcelChange(parcel.copy(dimensions = it)) },
                     label = { Text("Dimensions") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    maxLines = 1
                 )
             }
         },
