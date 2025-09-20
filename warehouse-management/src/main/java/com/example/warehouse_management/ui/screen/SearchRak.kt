@@ -1,6 +1,7 @@
 package com.example.warehouse_management.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.core_data.RakInfo
 import com.example.core_data.RakManager
 import com.example.core_ui.components.SearchBar
-import com.example.core_ui.components.FilterBy   // ✅ 用 core_ui 的 FilterBy
+import com.example.core_ui.components.FilterBy
 import com.example.warehouse_management.ui.components.FloatingActionButton
 import kotlinx.coroutines.launch
 
@@ -71,8 +72,8 @@ fun SearchRakScreen(
             SearchBar(
                 value = searchText,
                 onValueChange = { searchText = it },
-                label = "Search Rak",
-                placeholder = "Rak Name",
+                label = "Search Rack",
+                placeholder = "Rack Name",
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -92,21 +93,20 @@ fun SearchRakScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 列表
+            // 列表（每一项有边框 ✅）
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                    .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (filteredRakList.isEmpty()) {
                     item {
                         Text(
                             text = if (searchText.isBlank()) {
-                                "No Rak available.\nAdd a new Rak from the Add Rak page."
+                                "No Rack available.\nAdd a new Rack from the add Rack page."
                             } else {
-                                "No Rak found matching \"$searchText\".\nTry a different search term."
+                                "No Rack found matching \"$searchText\".\nTry a different search term."
                             },
                             fontSize = 18.sp,
                             textAlign = TextAlign.Center,
@@ -122,6 +122,7 @@ fun SearchRakScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp, horizontal = 12.dp)
+                                .border(2.dp, Color(0xFFFF69B4)) // ✅ 每个 item 加边框
                                 .background(Color(0xFFF5F5F5))
                                 .padding(12.dp)
                                 .clickable {
@@ -137,7 +138,7 @@ fun SearchRakScreen(
                                 }
                         ) {
                             Text(
-                                text = "RakName: ${rak.name}",
+                                text = "${rak.name}",
                                 fontSize = 20.sp,
                                 color = Color.Black,
                                 modifier = Modifier.padding(bottom = 4.dp)
@@ -153,7 +154,7 @@ fun SearchRakScreen(
                                     color = Color.DarkGray
                                 )
                                 Text(
-                                    text = "Rak State: ${rak.state}",
+                                    text = "State: ${rak.state}",
                                     fontSize = 14.sp,
                                     color = Color.DarkGray
                                 )

@@ -70,7 +70,7 @@ fun RakInformationScreen(
                 text = "Rak Information",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFD05667),
+                color = Color(0xFFFF69B4),
                 modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
             )
         }
@@ -87,7 +87,7 @@ fun RakInformationScreen(
                     text = "Associated Parcels",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFD05667),
+                    color = Color(0xFFFF69B4),
                     modifier = Modifier.padding(top = 20.dp, bottom = 6.dp)
                 )
             }

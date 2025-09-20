@@ -1,42 +1,9 @@
 package com.example.warehouse_management.ui.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,117 +30,73 @@ fun AddRakScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { Text("Add New Rak") },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            try {
-                                navController.popBackStack()
-                            } catch (e: Exception) {
-                                // Handle navigation error gracefully
-                                println("Navigation error: ${e.message}")
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                }
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.Top  // 👈 普通排列
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                RakInputForm(
-                    rakName = newRakName,
-                    onRakNameChange = { newRakName = it },
-                    selectedLayer = selectedLayer,
-                    onSelectedLayerChange = { selectedLayer = it },
-                    selectedState = selectedState,
-                    onSelectedStateChange = { selectedState = it },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                )
+            RakInputForm(
+                rakName = newRakName,
+                onRakNameChange = { newRakName = it },
+                selectedLayer = selectedLayer,
+                onSelectedLayerChange = { selectedLayer = it },
+                selectedState = selectedState,
+                onSelectedStateChange = { selectedState = it },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                AddCancelButtons(
-                    onAddClick = {
-                        // Validate input before adding
-                        if (newRakName.isBlank()) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Please enter a Rak name")
-                            }
-                            return@AddCancelButtons
+            Spacer(modifier = Modifier.height(24.dp)) // 👈 表单和按钮间距
+
+            AddButton(
+                onAddClick = {
+                    if (newRakName.isBlank()) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Please enter a Rak name")
                         }
+                        return@AddButton
+                    }
 
-                        try {
-                            // Save the new Rak name to RakManager
-                            val newRak = RakInfo(
-                                id = UUID.randomUUID().toString(),
-                                name = newRakName.trim(),
-                                layer = selectedLayer,
-                                state = selectedState
-                            )
-                            RakManager.addRak(newRak)
+                    try {
+                        val newRak = RakInfo(
+                            id = UUID.randomUUID().toString(),
+                            name = newRakName.trim(),
+                            layer = selectedLayer,
+                            state = selectedState
+                        )
+                        RakManager.addRak(newRak)
 
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Rak added successfully!")
-                                // Small delay to show the snackbar before navigating
-                                kotlinx.coroutines.delay(500)
-                                try {
-                                    // Navigate to searchrak instead of popping back stack
-                                    navController.navigate("searchrak") {
-                                        // Clear the back stack to prevent multiple instances
-                                        popUpTo("searchrak") { inclusive = true }
-                                    }
-                                } catch (navError: Exception) {
-                                    println("Navigation error after adding rak: ${navError.message}")
-                                    // Fallback to popBackStack if navigate fails
-                                    navController.popBackStack()
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Rak added successfully!")
+                            kotlinx.coroutines.delay(500)
+                            try {
+                                navController.navigate("searchrak") {
+                                    popUpTo("searchrak") { inclusive = true }
                                 }
+                            } catch (navError: Exception) {
+                                println("Navigation error after adding rak: ${navError.message}")
+                                navController.popBackStack()
                             }
-                        } catch (e: Exception) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Error adding Rak: ${e.message}")
-                            }
-                            println("Error adding Rak: ${e.message}")
                         }
-                    },
-                    onCancelClick = {
-                        try {
-                            // Navigate back to searchrak on cancel
-                            navController.navigate("searchrak") {
-                                popUpTo("searchrak") { inclusive = true }
-                            }
-                        } catch (e: Exception) {
-                            println("Navigation error on cancel: ${e.message}")
-                            // Fallback to popBackStack
-                            navController.popBackStack()
+                    } catch (e: Exception) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Error adding Rak: ${e.message}")
                         }
-                    },
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+                        println("Error adding Rak: ${e.message}")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RakInputForm(
+fun RakInputForm(
     rakName: String,
     onRakNameChange: (String) -> Unit,
     selectedLayer: Int,
@@ -187,32 +110,32 @@ private fun RakInputForm(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        val labelWidth = 100.dp // ✅ 统一 label 宽度
+
         // Rak Name Field
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "Rak Name:",
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .width(80.dp),
+                text = "Rack Name:",
+                modifier = Modifier.width(labelWidth),
                 fontSize = 16.sp
             )
 
             OutlinedTextField(
                 value = rakName,
                 onValueChange = onRakNameChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
                 singleLine = true,
                 shape = RoundedCornerShape(8.dp),
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = Color.White,
                     focusedContainerColor = Color.White
                 ),
-                placeholder = { Text("Enter rak name") }
+                placeholder = { Text("Enter Rack Name") }
             )
         }
 
@@ -223,16 +146,14 @@ private fun RakInputForm(
         ) {
             Text(
                 text = "Layer:",
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .width(80.dp),
+                modifier = Modifier.width(labelWidth),
                 fontSize = 16.sp
             )
 
             ExposedDropdownMenuBox(
                 expanded = layerExpanded,
                 onExpandedChange = { layerExpanded = !layerExpanded },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(1f)
             ) {
                 OutlinedTextField(
                     value = selectedLayer.toString(),
@@ -255,7 +176,7 @@ private fun RakInputForm(
                     expanded = layerExpanded,
                     onDismissRequest = { layerExpanded = false }
                 ) {
-                    listOf(1, 2, 3, 4, 5).forEach { layer ->
+                    listOf(1, 2, 3).forEach { layer ->
                         DropdownMenuItem(
                             text = { Text(text = layer.toString()) },
                             onClick = {
@@ -274,17 +195,15 @@ private fun RakInputForm(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "Rak State:",
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .width(80.dp),
+                text = "Rack State:",
+                modifier = Modifier.width(labelWidth),
                 fontSize = 16.sp
             )
 
             ExposedDropdownMenuBox(
                 expanded = stateExpanded,
                 onExpandedChange = { stateExpanded = !stateExpanded },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(1f)
             ) {
                 OutlinedTextField(
                     value = selectedState,
@@ -323,43 +242,22 @@ private fun RakInputForm(
 }
 
 @Composable
-private fun AddCancelButtons(
+private fun AddButton(
     onAddClick: () -> Unit,
-    onCancelClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+    Button(
+        onClick = onAddClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFFFF69B4),
+            contentColor = Color.White
+        ),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Button(
-            onClick = onAddClick,
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 8.dp)
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF4CAF50),
-                contentColor = Color.White
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("Add", fontSize = 16.sp)
-        }
-
-        Button(
-            onClick = onCancelClick,
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFD05667),
-                contentColor = Color.White
-            ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text("Cancel", fontSize = 16.sp)
-        }
+        Text("Add", fontSize = 16.sp)
     }
 }
 
