@@ -1,41 +1,32 @@
 package com.example.order_and_parcel_management
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.example.order_and_parcel_management.ui.screen.AddOrderScreen
 import com.example.order_and_parcel_management.ui.screen.SearchOrderAndParcelScreen
 import com.example.order_and_parcel_management.ui.screen.SelectOrderandParcelScreen
 
-@Composable
-fun OrderandParcelManagementNavHost(
-    modifier: Modifier = Modifier.Companion,
-) {
-    val localNavController = rememberNavController()
+fun NavGraphBuilder.orderNavigation(navController: NavHostController) {
+    // Order 相关页面
+    composable("order") {
+        SearchOrderAndParcelScreen(
+            navController = navController,
+            modifier = Modifier
+        )
+    }
 
-    NavHost(
-        navController = localNavController,
-        startDestination = "search",
+    composable("multiple_select") {
+        SelectOrderandParcelScreen(
+            navController = navController,
+        )
+    }
 
-
-        modifier = modifier
-    ) {
-        composable("search") {
-            SearchOrderAndParcelScreen(
-                navController = localNavController,
-            )
-        }
-        composable("multiple_select") {
-            SelectOrderandParcelScreen(
-                navController = localNavController
-            )
-        }
-        composable("add") {
-            AddOrderScreen(
-                navController = localNavController
-            )
-        }
+    composable("AddOrder") {
+        AddOrderScreen(
+            navController = navController,
+            modifier = Modifier
+        )
     }
 }

@@ -3,10 +3,18 @@
     <string name="app_name">LogExpress</string>
 
     //Page Titles
-    <string name="home_pt">Home Page</string>
-    <string name="order_pt">Order Page</string>
-    <string name="rak_pt">Rak Page</string>
-    <string name="profile_pt">Profile Page</string>
-    <string name="setting_pt">Setting Page</string>
+    <string name="home_pt">Home</string>
+    <string name="report_pt">Report Management</string>
+
+    <string name="order_pt">Order and Parcel Management</string>
+    <string name="add_order_pt">Add Order</string>
+
+    <string name="warehouse_pt">Warehouse Management</string>
+
+    <string name="delivery_pt">Delivery and Transportation Management</string>
+
+    <string name="profile_pt">Profile</string>
+    <string name="setting_pt">Setting</string>
+
     <string name="other_pt">Other Page</string>
 </resources>

@@ -37,7 +37,7 @@ data class ActionButtonItem(
 fun FloatingActionButton(navController: NavController, modifier: Modifier = Modifier) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select", "multiple_select"),
-        ActionButtonItem(Icons.Default.Add, "Add", "add")
+        ActionButtonItem(Icons.Default.Add, "Add", "AddOrder")
     )
 
     NavigationActionButton(

@@ -111,14 +111,15 @@ fun NavigationBar(
                             item = item,
                             isSelected = isSelected,
                             onClick = {
-                                if (currentDestination?.destination?.route != item.route) {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                val currentRoute = currentDestination?.destination?.route
+
+                                if (currentRoute != item.route) {
+                                    // 智能导航策略
+                                    navigateToBottomNavDestination(
+                                        navController = navController,
+                                        targetRoute = item.route,
+                                        currentRoute = currentRoute
+                                    )
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -142,14 +143,15 @@ fun NavigationBar(
                     item = item,
                     isSelected = isSelected,
                     onClick = {
-                        if (currentDestination?.destination?.route != item.route) {
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                        val currentRoute = currentDestination?.destination?.route
+
+                        if (currentRoute != item.route) {
+                            // 智能导航策略
+                            navigateToBottomNavDestination(
+                                navController = navController,
+                                targetRoute = item.route,
+                                currentRoute = currentRoute
+                            )
                         }
                     }
                 )
@@ -232,6 +234,65 @@ fun NavigationButton(
                     color = animatedTextColor,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                 )
+            }
+        }
+    }
+}
+
+// 智能导航函数
+private fun navigateToBottomNavDestination(
+    navController: NavController,
+    targetRoute: String,
+    currentRoute: String?
+) {
+    // 定义底部导航的主要页面
+    val bottomNavRoutes = setOf("home", "profile", "scan")
+
+    // 定义 home 相关的子页面
+    val homeRelatedRoutes = setOf("order", "rak", "search", "add", "multiple_select")
+
+    when {
+        // 情况1: 目标是 home，且当前在 home 相关页面
+        targetRoute == "home" && (currentRoute in homeRelatedRoutes || currentRoute == "home") -> {
+            // 直接返回到 home，不创建新实例
+            navController.popBackStack("home", inclusive = false)
+        }
+
+        // 情况2: 目标是 home，但当前在其他底部导航页面
+        targetRoute == "home" && currentRoute in bottomNavRoutes -> {
+            navController.navigate("home") {
+                popUpTo("home") {
+                    inclusive = true
+                }
+                launchSingleTop = true
+            }
+        }
+
+        // 情况3: 在底部导航页面之间切换
+        targetRoute in bottomNavRoutes && currentRoute in bottomNavRoutes -> {
+            navController.navigate(targetRoute) {
+                popUpTo("home") {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+
+        // 情况4: 从子页面导航到其他底部导航页面
+        targetRoute in bottomNavRoutes && currentRoute in homeRelatedRoutes -> {
+            navController.navigate(targetRoute) {
+                popUpTo("home")
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+
+        // 情况5: 默认情况
+        else -> {
+            navController.navigate(targetRoute) {
+                popUpTo("home")
+                launchSingleTop = true
             }
         }
     }

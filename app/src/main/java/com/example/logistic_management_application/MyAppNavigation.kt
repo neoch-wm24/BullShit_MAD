@@ -18,13 +18,14 @@ import com.example.core_ui.components.ScanScreen
 import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
 import com.example.main_screen.ui.ProfilePage
-import com.example.order_and_parcel_management.OrderandParcelManagementNavHost
 import com.example.warehouse_management.WarehouseManagementNavHost
 import com.example.warehouse_management.ui.screen.AddRakScreen
 import com.example.warehouse_management.ui.screen.RakInformationScreen
 import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
+import com.example.order_and_parcel_management.orderNavigation
+import com.example.order_and_parcel_management.ui.screen.AddOrderScreen
 import com.example.user_management.ui.UserManagementNavHost
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel
 
@@ -101,12 +102,11 @@ fun MyAppNavigation(
             composable("user") {
                 UserManagementNavHost(
                     modifier = Modifier.fillMaxSize(),
-                )            }
-            composable("order") {
-                OrderandParcelManagementNavHost(
-                    modifier = Modifier.fillMaxSize(),
                 )
             }
+
+            orderNavigation(navController)
+
             composable("warehouse") {
                 WarehouseManagementNavHost(
                     mainNavController = navController,

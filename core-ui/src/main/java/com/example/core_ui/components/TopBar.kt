@@ -40,7 +40,9 @@ private fun getTitleByRoute(route: String?): String{
     return when(route) {
         "home" -> stringResource(id = R.string.home_pt)
         "order" -> stringResource(id = R.string.order_pt)
-        "rak" -> stringResource(id = R.string.rak_pt)
+        "AddOrder" -> stringResource(id = R.string.add_order_pt)
+        "warehouse" -> stringResource(id = R.string.warehouse_pt)
+        "delivery" -> stringResource(id = R.string.delivery_pt)
         "profile" -> stringResource(id = R.string.profile_pt)
         "setting" -> stringResource(id = R.string.setting_pt)
         "other" -> stringResource(id = R.string.other_pt)
