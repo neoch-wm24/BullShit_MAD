@@ -176,8 +176,8 @@ fun AddOrderScreen(
                 Button(
                     onClick = {
                         saveOrderToFirestore(order)
-                        navController.navigate("search") {
-                            popUpTo("add") { inclusive = true }
+                        navController.navigate("order") {
+                            popUpTo("AddOrder") { inclusive = true }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

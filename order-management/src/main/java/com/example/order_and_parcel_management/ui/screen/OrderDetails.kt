@@ -1,219 +1,140 @@
 package com.example.order_and_parcel_management.ui.screen
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.core_data.*
-import java.util.Locale
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.FieldPath
+
+// ---------------- 数据类 ----------------
+data class ParcelInfo(
+    val id: String = "",
+    val description: String = "",
+    val weight: String = "",
+    val dimensions: String = "",
+    val value: String = ""
+)
 
 @Composable
-fun ParcelListSection(
-    modifier: Modifier = Modifier
-) {
-    // Get data from ParcelDataManager with proper reactivity
-    val allParcelData by remember {
-        derivedStateOf { ParcelDataManager.allParcelData }
-    }
+fun OrderDetailScreen(orderId: String) {
+    val db = FirebaseFirestore.getInstance()
 
-    Column(modifier = modifier) {
-        // Parcel List Title
-        Text(
-            text = "Parcel List",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFFD05667),
-            modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
-        )
+    var senderName by remember { mutableStateOf("加载中...") }
+    var receiverName by remember { mutableStateOf("加载中...") }
+    var parcels by remember { mutableStateOf<List<ParcelInfo>>(emptyList()) }
 
-        // Parcel Cards
-        if (allParcelData.isEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Text(
-                    text = "No parcels available. Add orders to see them here.",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(20.dp)
-                )
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                allParcelData.forEach { orderData ->
-                    ParcelOrderCard(orderData = orderData)
+    // 🔄 监听订单
+    DisposableEffect(orderId) {
+        var parcelListener: ListenerRegistration? = null
+
+        val orderListener = db.collection("orders").document(orderId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    println("获取订单失败: ${e.message}")
+                    return@addSnapshotListener
                 }
-            }
-        }
-    }
-}
+                if (snapshot != null && snapshot.exists()) {
+                    val senderId = snapshot.getString("sender_id") ?: "未知"
+                    val receiverId = snapshot.getString("receiver_id") ?: "未知"
+                    val parcelIds = snapshot.get("parcel_id") as? List<String> ?: emptyList()
 
-fun LazyListScope.parcelListItems() {
-    // Get data from ParcelDataManager
-    val allParcelData = ParcelDataManager.allParcelData
+                    // 查询 sender/receiver 名字
+                    if (senderId != "未知") {
+                        db.collection("customers").document(senderId).get()
+                            .addOnSuccessListener { doc ->
+                                senderName = doc.getString("name") ?: senderId
+                            }
+                    }
+                    if (receiverId != "未知") {
+                        db.collection("customers").document(receiverId).get()
+                            .addOnSuccessListener { doc ->
+                                receiverName = doc.getString("name") ?: receiverId
+                            }
+                    }
 
-    // Parcel List Title
-    item {
-        Text(
-            text = "Parcel List",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFFD05667),
-            modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)
-        )
-    }
-
-    // Individual Parcel Cards
-    if (allParcelData.isEmpty()) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Text(
-                    text = "No parcels available. Add orders to see them here.",
-                    fontSize = 16.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(20.dp)
-                )
-            }
-        }
-    } else {
-        items(allParcelData) { orderData ->
-            ParcelOrderCard(orderData = orderData)
-        }
-    }
-}
-
-@Composable
-fun ParcelOrderCard(orderData: AllParcelData) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Order ID
-            Text(
-                text = "Order ID: ${orderData.id}",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-
-            // Date
-            Text(
-                text = "Date: ${
-                    java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(orderData.timestamp)
-                }",
-                fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            // Horizontal divider
-            HorizontalDivider(
-                color = Color.LightGray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-
-            // Sender and Recipient
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Sender:", fontSize = 12.sp, color = Color.Gray)
-                    Text(
-                        text = orderData.sender.information,
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Recipient:", fontSize = 12.sp, color = Color.Gray)
-                    Text(
-                        text = orderData.recipient.information,
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Horizontal divider
-            HorizontalDivider(
-                color = Color.LightGray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-
-            // Number of Parcels
-            Text(
-                text = "Number of Parcels: ${orderData.parcels.size}",
-                fontSize = 14.sp,
-                color = Color.Black,
-                fontWeight = FontWeight.Medium
-            )
-
-            // Parcel list
-            if (orderData.parcels.isNotEmpty()) {
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    orderData.parcels.forEachIndexed { index, parcel ->
-                        ParcelInfoItem(index = index + 1, parcel = parcel)
+                    // 🔄 监听 parcels
+                    parcelListener?.remove()
+                    if (parcelIds.isNotEmpty()) {
+                        parcelListener = db.collection("parcels")
+                            .whereIn(FieldPath.documentId(), parcelIds)
+                            .addSnapshotListener { result, err ->
+                                if (err != null) {
+                                    println("获取包裹失败: ${err.message}")
+                                    return@addSnapshotListener
+                                }
+                                if (result != null) {
+                                    parcels = result.documents.map { doc ->
+                                        ParcelInfo(
+                                            id = doc.id,
+                                            description = doc.getString("description") ?: "",
+                                            weight = doc.getString("weight") ?: "",
+                                            dimensions = doc.getString("size") ?: "",
+                                            value = doc.getString("value") ?: ""
+                                        )
+                                    }
+                                }
+                            }
+                    } else {
+                        parcels = emptyList()
                     }
                 }
             }
 
-            // Final horizontal divider
-            HorizontalDivider(
-                color = Color.LightGray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(top = 12.dp)
-            )
+        onDispose {
+            orderListener.remove()
+            parcelListener?.remove()
+        }
+    }
+
+    // ---------------- UI ----------------
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("订单详情: $orderId", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text("寄件人: $senderName", fontSize = 14.sp)
+        Text("收件人: $receiverName", fontSize = 14.sp)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text("包裹列表 (${parcels.size})", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFD05667))
+
+        if (parcels.isEmpty()) {
+            Text("暂无包裹", color = Color.Gray, modifier = Modifier.padding(8.dp))
+        } else {
+            parcels.forEachIndexed { index, parcel ->
+                ParcelInfoItem(index = index + 1, parcel = parcel)
+            }
         }
     }
 }
 
 @Composable
 private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Text(
-            text = "$index. ",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.DarkGray
-        )
-        Text(
-            text = parcel.information,
-            fontSize = 14.sp,
-            color = Color.Black,
-            modifier = Modifier.weight(1f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("$index. ${parcel.description}", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            if (parcel.weight.isNotEmpty()) {
+                Text("重量: ${parcel.weight} kg", fontSize = 12.sp, color = Color.Gray)
+            }
+            if (parcel.dimensions.isNotEmpty()) {
+                Text("尺寸: ${parcel.dimensions}", fontSize = 12.sp, color = Color.Gray)
+            }
+            if (parcel.value.isNotEmpty()) {
+                Text("价值: RM ${parcel.value}", fontSize = 12.sp, color = Color.Gray)
+            }
+        }
     }
 }

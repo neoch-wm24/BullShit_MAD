@@ -130,7 +130,7 @@ fun SearchRackScreen(
                                         if (onNavigateToRackInfo != null) {
                                             onNavigateToRackInfo(rack.id)
                                         } else {
-                                            navController.navigate("rack_information/${rack.id}")
+                                            navController.navigate("RackDetails/${rack.id}")
                                         }
                                     } catch (e: Exception) {
                                         android.util.Log.e("SearchRack", "Navigation failed", e)

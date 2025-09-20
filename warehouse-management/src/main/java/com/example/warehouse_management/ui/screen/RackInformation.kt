@@ -21,8 +21,8 @@ import java.util.Locale
 
 @Composable
 fun RackInformationScreen(
-    navController: NavController,
     rackId: String,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     // ① 判断是否有 Rack 数据
@@ -274,5 +274,5 @@ private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
 @Composable
 fun RackInformationScreenPreview() {
     val navController = rememberNavController()
-    RackInformationScreen(navController = navController, rackId = "SampleRackId")
+    RackInformationScreen(rackId = "SampleRackId", navController = navController)
 }

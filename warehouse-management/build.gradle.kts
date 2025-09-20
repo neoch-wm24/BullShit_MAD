@@ -59,7 +59,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")                      // 支持在 Compose 中使用 Navigation 组件进行导航
     implementation(project(":core-ui"))                                                 // 引入项目中的 core-ui 模块，复用其中的 UI 组件和主题
     implementation("androidx.compose.material:material-icons-extended:1.7.5")
-    implementation(project(":core-data")) // Added for RakInfo & RakManager
+    implementation(project(":core-data")) // Added for RackInfo & RackManager
 
     debugImplementation("androidx.compose.ui:ui-tooling")                               // 提供调试工具的库
     debugImplementation("androidx.compose.ui:ui-test-manifest")                         // 提供测试清单的库

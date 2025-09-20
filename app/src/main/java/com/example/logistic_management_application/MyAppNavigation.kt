@@ -18,15 +18,12 @@ import com.example.core_ui.components.ScanScreen
 import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
 import com.example.main_screen.ui.ProfilePage
-import com.example.warehouse_management.WarehouseManagementNavHost
-import com.example.warehouse_management.ui.screen.AddRackScreen
-import com.example.warehouse_management.ui.screen.RackInformationScreen
 import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
 import com.example.order_and_parcel_management.orderNavigation
-import com.example.order_and_parcel_management.ui.screen.AddOrderScreen
-import com.example.user_management.ui.UserManagementNavHost
+import com.example.user_management.userNavigation
+import com.example.warehouse_management.warehouseNavigation
 import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,39 +96,19 @@ fun MyAppNavigation(
                     authViewModel = authViewModel
                 )
             }
-            composable("user") {
-                UserManagementNavHost(
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+
+            userNavigation(navController)
 
             orderNavigation(navController)
 
-            composable("warehouse") {
-                WarehouseManagementNavHost(
-                    mainNavController = navController,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            warehouseNavigation(navController)
+
             composable("delivery") {
                 DeliveryAndTransportationNavHost(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            composable("rack_information/{rackId}") { backStackEntry ->
-                val rackId = backStackEntry.arguments?.getString("rackId") ?: ""
-                RackInformationScreen(
-                    navController = navController,
-                    rackId = rackId,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            composable("add_rack") {
-                AddRackScreen(
-                    navController = navController,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+
             composable("scan") {
                 ScanScreen(
                     modifier = Modifier.padding(innerPadding)

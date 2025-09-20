@@ -6,15 +6,25 @@
     <string name="home_pt">Home</string>
     <string name="report_pt">Report Management</string>
 
+    <string name="user_pt">User Management</string>
+    <string name="add_user_pt">Add User</string>
+    <string name="customer_details_pt">Customer Details</string>
+    <string name="edit_user_pt">Edit User Details</string>
+
     <string name="order_pt">Order and Parcel Management</string>
     <string name="add_order_pt">Add Order</string>
+    <string name="order_details_pt">Order Details</string>
 
     <string name="warehouse_pt">Warehouse Management</string>
+    <string name="add_rack_pt">Add Rack</string>
+    <string name="rack_details_pt">Rack Details</string>
 
     <string name="delivery_pt">Delivery and Transportation Management</string>
 
     <string name="profile_pt">Profile</string>
     <string name="setting_pt">Setting</string>
+
+    <string name="scan_pt">Scan</string>
 
     <string name="other_pt">Other Page</string>
 </resources>

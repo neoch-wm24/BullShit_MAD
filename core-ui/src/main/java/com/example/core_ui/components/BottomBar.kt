@@ -249,7 +249,7 @@ private fun navigateToBottomNavDestination(
     val bottomNavRoutes = setOf("home", "profile", "scan")
 
     // 定义 home 相关的子页面
-    val homeRelatedRoutes = setOf("order", "rak", "search", "add", "multiple_select")
+    val homeRelatedRoutes = setOf("order", "rack", "search", "add", "multiple_select")
 
     when {
         // 情况1: 目标是 home，且当前在 home 相关页面

@@ -2,35 +2,38 @@ package com.example.warehouse_management
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.warehouse_management.ui.screen.SearchRackScreen
 import com.example.warehouse_management.ui.screen.AddRackScreen
+import com.example.warehouse_management.ui.screen.RackInformationScreen
 
-@Composable
-fun WarehouseManagementNavHost(
-    mainNavController: NavHostController, // This is the main NavController
-    modifier: Modifier = Modifier,
-){
-    val localNavController = rememberNavController()
-    NavHost(
-        navController = localNavController,
-        startDestination = "search_rack",
-        modifier = modifier
-    ){
-        composable("search_rack") {
-            SearchRackScreen(
-                navController = mainNavController, // Use main NavController for cross-module navigation
-            )
-        }
+fun NavGraphBuilder.warehouseNavigation(navController: NavHostController) {
+    // Order 相关页面
+    composable("warehouse") {
+        SearchRackScreen(
+            navController = navController
+        )
+    }
 
-        composable("add_rack") {
-            AddRackScreen(
-                navController = localNavController, // Local NavController for internal navigation
-                modifier = Modifier
-            )
-        }
+    composable("RackDetails/{rackId}"
+    ) { backStackEntry ->
+        val rackId = backStackEntry.arguments?.getString("rackId") ?: ""
+        RackInformationScreen(
+            rackId = rackId,
+            navController = navController,
+            modifier = Modifier
+        )
+    }
+
+    composable("AddRack") {
+        AddRackScreen(
+            navController = navController,
+            modifier = Modifier
+        )
     }
 }
