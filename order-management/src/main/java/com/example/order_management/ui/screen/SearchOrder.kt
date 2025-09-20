@@ -19,7 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.core_ui.components.BottomBar
 import com.example.core_ui.components.TopBar
 import com.example.core_ui.components.SearchBar
-import com.example.core_ui.components.FilterBy   // ✅ 用 core_ui 的 FilterBy
+import com.example.core_ui.components.FilterBy
 import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.order_management.ui.components.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
@@ -53,17 +53,51 @@ fun SearchOrderAndParcelScreen(
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    orders = snapshot.documents.mapNotNull { doc ->
+                    val tempOrders = snapshot.documents.mapNotNull { doc ->
                         val id = doc.getString("id") ?: return@mapNotNull null
-                        val sender = doc.getString("sender_id") ?: "未知"
-                        val receiver = doc.getString("receiver_id") ?: "未知"
-                        val parcels = (doc.get("parcel_id") as? List<*>)?.size ?: 0
-                        OrderSummary(id, sender, receiver, parcels)
+                        val senderId = doc.getString("sender_id") ?: ""
+                        val receiverId = doc.getString("receiver_id") ?: ""
+                        val parcels = (doc.get("parcel_ids") as? List<*>)?.size ?: 0
+                        Triple(id, senderId, receiverId) to parcels
+                    }
+
+                    tempOrders.forEach { (ids, parcels) ->
+                        val (id, senderId, receiverId) = ids
+
+                        // 查 sender
+                        db.collection("customers")
+                            .whereEqualTo("id", senderId)
+                            .limit(1)
+                            .get()
+                            .addOnSuccessListener { senderSnap ->
+                                val senderName = senderSnap.documents.firstOrNull()?.getString("name") ?: "未知"
+
+                                // 查 receiver
+                                db.collection("customers")
+                                    .whereEqualTo("id", receiverId)
+                                    .limit(1)
+                                    .get()
+                                    .addOnSuccessListener { receiverSnap ->
+                                        val receiverName = receiverSnap.documents.firstOrNull()?.getString("name") ?: "未知"
+
+                                        // 更新 orders
+                                        orders = orders.toMutableList().apply {
+                                            removeAll { it.id == id }
+                                            add(
+                                                OrderSummary(
+                                                    id = id,
+                                                    senderName = senderName,
+                                                    receiverName = receiverName,
+                                                    parcelCount = parcels
+                                                )
+                                            )
+                                        }
+                                    }
+                            }
                     }
                 }
             }
 
-        // ✅ 清理监听
         onDispose { listener.remove() }
     }
 

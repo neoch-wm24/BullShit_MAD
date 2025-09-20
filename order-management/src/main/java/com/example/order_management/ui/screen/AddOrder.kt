@@ -89,15 +89,14 @@ data class Order(
 /* ----------------------------------- Save Data To Firestore ----------------------------------- */
 fun saveParcelToFirestore(parcel: Parcel, onComplete: (String) -> Unit) {
     val db = FirebaseFirestore.getInstance()
-    val docRef = db.collection("parcels").document()
-    val parcelId = docRef.id
     val data = mapOf(
-        "id" to parcelId,
+        "id" to parcel.id,
         "description" to parcel.description,
         "weight" to parcel.weight,
         "dimensions" to parcel.dimensions
     )
-    docRef.set(data).addOnSuccessListener { onComplete(parcelId) }
+    db.collection("parcels").document(parcel.id).set(data)
+        .addOnSuccessListener { onComplete(parcel.id) }
 }
 
 fun saveOrderToFirestore(order: Order) {
@@ -106,7 +105,7 @@ fun saveOrderToFirestore(order: Order) {
         "id" to order.id,
         "sender_id" to order.senderId,
         "receiver_id" to order.receiverId,
-        "parcel_id" to order.parcelIds,
+        "parcel_ids" to order.parcelIds,
         "total_weight" to order.totalWeight,
         "cost" to order.cost
     )
@@ -122,6 +121,7 @@ fun AddOrderScreen(
     var order by remember { mutableStateOf(Order()) }
     var currentParcel by remember { mutableStateOf(Parcel()) }
     var showParcelDialog by remember { mutableStateOf(false) }
+    var parcels by remember { mutableStateOf<List<Parcel>>(emptyList()) }
 
     Column(
         modifier = modifier
@@ -137,41 +137,54 @@ fun AddOrderScreen(
             // 订单ID + QR
             item { OrderInfoSection(order = order) }
 
-            // Sender 选择
+            // Sender Selector
             item {
                 CustomerSelector(
-                    title = "寄件人",
+                    title = "Sender",
                     onCustomerSelected = { customerId -> order = order.copy(senderId = customerId) }
                 )
             }
 
-            // Receiver 选择
+            // Receiver Selector
             item {
                 CustomerSelector(
-                    title = "收件人",
+                    title = "Receiver",
                     onCustomerSelected = { customerId -> order = order.copy(receiverId = customerId) }
                 )
             }
 
-            // 包裹
+            // Parcel
             item {
                 ParcelListSection(
-                    parcels = order.parcelIds,
+                    parcels = parcels,
                     onAddParcel = { showParcelDialog = true },
                     onDeleteParcel = { index ->
+                        // 删除包裹
+                        parcels = parcels.toMutableList().apply { removeAt(index) }
                         order = order.copy(parcelIds = order.parcelIds.toMutableList().apply { removeAt(index) })
+
+                        val newTotalWeight = parcels.sumOf { it.weight.toDoubleOrNull() ?: 0.0 }
+                        val newCost = if (parcels.isNotEmpty()) {
+                            5.0 + newTotalWeight * 2
+                        } else {
+                            0.0
+                        }
+                        order = order.copy(totalWeight = newTotalWeight, cost = newCost)
                     }
                 )
             }
 
-            // ✅ 汇总信息
+            // Order Summary
             item { SummarySection(order = order) }
 
-            // 提交按钮
+            // Submit Button
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
+                        parcels.forEach { parcel ->
+                            saveParcelToFirestore(parcel) { }
+                        }
                         saveOrderToFirestore(order)
                         navController.navigate("order") {
                             popUpTo("AddOrder") { inclusive = true }
@@ -182,30 +195,34 @@ fun AddOrderScreen(
                             order.receiverId.isNotEmpty() &&
                             order.parcelIds.isNotEmpty()
                 ) {
-                    Text("提交订单", fontSize = 16.sp)
+                    Text("Submit Order", fontSize = 16.sp)
                 }
             }
         }
     }
 
-    // 添加包裹对话框
+    // Parcel Dialog
     if (showParcelDialog) {
         AddParcelDialog(
             parcel = currentParcel,
             onParcelChange = { currentParcel = it },
             onConfirm = {
-                saveParcelToFirestore(currentParcel) { parcelId ->
-                    val weightNum = currentParcel.weight.toDoubleOrNull() ?: 0.0
-                    val newTotalWeight = order.totalWeight + weightNum
-                    val newCost = 5 + newTotalWeight * 2  // 运费公式
-                    order = order.copy(
-                        parcelIds = order.parcelIds + parcelId,
-                        totalWeight = newTotalWeight,
-                        cost = newCost
-                    )
-                    currentParcel = Parcel()
-                    showParcelDialog = false
-                }
+                val sequenceNumber = order.parcelIds.size + 1
+                val parcelId = generateParcelId(order.id, sequenceNumber)
+
+                val newParcel = currentParcel.copy(id = parcelId)
+                val weightNum = currentParcel.weight.toDoubleOrNull() ?: 0.0
+                val newTotalWeight = order.totalWeight + weightNum
+                val newCost = 5 + newTotalWeight * 2  // Shipping Fee Formula
+
+                parcels = parcels + newParcel
+                order = order.copy(
+                    parcelIds = order.parcelIds + parcelId,
+                    totalWeight = newTotalWeight,
+                    cost = newCost
+                )
+                currentParcel = Parcel()
+                showParcelDialog = false
             },
             onDismiss = {
                 currentParcel = Parcel()
@@ -215,10 +232,9 @@ fun AddOrderScreen(
     }
 }
 
-// -------------------- 订单信息 + QR --------------------
+/* -------------------- Order Details -------------------- */
 @Composable
 fun OrderInfoSection(order: Order) {
-    var showQRCode by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(8.dp),
@@ -226,20 +242,6 @@ fun OrderInfoSection(order: Order) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Order ID: ${order.id}", fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.QrCode,
-                    contentDescription = "Show QR",
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { showQRCode = !showQRCode }
-                )
-            }
-            AnimatedVisibility(showQRCode) {
-                val qrBitmap = generateQRCode(order.id)
-                qrBitmap?.let {
-                    Image(bitmap = it.asImageBitmap(), contentDescription = "QR", modifier = Modifier.size(120.dp))
-                }
             }
         }
     }
@@ -258,21 +260,21 @@ fun CustomerSelector(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var searchText by remember { mutableStateOf("") }
 
-    // Firestore 拉取客户列表
+    // Load customers from Firestore
     LaunchedEffect(Unit) {
         try {
             val snapshot = db.collection("customers").get().await()
             customers = snapshot.documents.mapNotNull { doc ->
                 val id = doc.getString("id") ?: doc.id
-                val name = doc.getString("name") ?: "未知用户"
+                val name = doc.getString("name") ?: "unknown user"
                 id to name
             }
             isLoading = false
-            println("加载到 ${customers.size} 个客户: $customers") // 调试日志
+            println("loading ${customers.size} customer: $customers")
         } catch (e: Exception) {
-            errorMessage = "加载客户列表失败: ${e.message}"
+            errorMessage = "loading customer list failed: ${e.message}"
             isLoading = false
-            println("加载客户失败: ${e.message}") // 调试日志
+            println("loading customer failed: ${e.message}")
         }
     }
 
@@ -285,7 +287,7 @@ fun CustomerSelector(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 搜索输入框和下拉按钮
+            // search bar & dropdown button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -302,10 +304,10 @@ fun CustomerSelector(
                     label = {
                         Text(
                             when {
-                                isLoading -> "加载中..."
-                                errorMessage != null -> "加载失败"
-                                customers.isEmpty() -> "暂无客户数据"
-                                else -> "选择或搜索客户"
+                                isLoading -> "loading..."
+                                errorMessage != null -> "loading failed"
+                                customers.isEmpty() -> "no customer data yet"
+                                else -> "Customer Name"
                             }
                         )
                     },
@@ -329,7 +331,7 @@ fun CustomerSelector(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "清除选择",
+                                        contentDescription = "clear selection",
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -340,10 +342,10 @@ fun CustomerSelector(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 下拉按钮
+                // dropdown button
                 IconButton(
                     onClick = {
-                        println("点击下拉按钮, customers: ${customers.size}, expanded: $expanded") // 调试
+                        println("click drop dwn button, customers: ${customers.size}, expanded: $expanded") // test
                         if (!isLoading && customers.isNotEmpty()) {
                             expanded = !expanded
                         }
@@ -352,12 +354,12 @@ fun CustomerSelector(
                 ) {
                     Icon(
                         imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (expanded) "收起" else "展开"
+                        contentDescription = if (expanded) "collapse" else "expand"
                     )
                 }
             }
 
-            // 客户列表
+            // Customer List
             AnimatedVisibility(
                 visible = expanded && customers.isNotEmpty(),
                 enter = expandVertically(),
@@ -372,9 +374,9 @@ fun CustomerSelector(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp) // 限制最大高度
+                            .heightIn(max = 200.dp) // Limit maximum height
                     ) {
-                        // 过滤客户列表
+                        // filter customers list by search text
                         val filteredCustomers = customers.filter { customer ->
                             customer.second.contains(searchText, ignoreCase = true) ||
                                     customer.first.contains(searchText, ignoreCase = true)
@@ -389,7 +391,7 @@ fun CustomerSelector(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        "未找到匹配的客户",
+                                        "No matching customers found",
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -402,7 +404,7 @@ fun CustomerSelector(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
-                                            println("选择客户: $customer") // 调试
+                                            println("select customer: $customer") // test
                                             selectedCustomer = customer
                                             searchText = ""
                                             expanded = false
@@ -434,7 +436,7 @@ fun CustomerSelector(
                 }
             }
 
-            // 错误信息显示
+            // error message display
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -443,25 +445,15 @@ fun CustomerSelector(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-
-            // 调试信息（发布时删除）
-            if (customers.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "已加载 ${customers.size} 个客户 | 展开状态: $expanded",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
 
 @Composable
 fun ParcelListSection(
-    parcels: List<String>,
+    parcels: List<Parcel>,
     onAddParcel: () -> Unit,
-    onDeleteParcel: (Int) -> Unit = {} // Add this parameter with default empty implementation
+    onDeleteParcel: (Int) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -473,33 +465,68 @@ fun ParcelListSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("包裹 (${parcels.size})", fontWeight = FontWeight.Bold)
+                Text("Parcel (${parcels.size})", fontWeight = FontWeight.Bold)
                 FloatingActionButton(onClick = onAddParcel, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "添加包裹")
+                    Icon(Icons.Default.Add, contentDescription = "Add Parcel")
                 }
             }
 
             if (parcels.isEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "暂无包裹，请点击右上角按钮添加",
+                    "No parcel yet. Please add on.",
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                parcels.forEachIndexed { index, id ->
-                    Row(
+                parcels.forEachIndexed { index, parcel ->
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Text("Parcel ID: $id")
-                        // Optional: Add delete button
-                        TextButton(onClick = { onDeleteParcel(index) }) {
-                            Text("删除", color = MaterialTheme.colorScheme.error)
+                        Column(
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Parcel ID: ${parcel.id}",
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 14.sp
+                                    )
+                                    if (parcel.description.isNotEmpty()) {
+                                        Text(
+                                            "Description: ${parcel.description}",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (parcel.weight.isNotEmpty()) {
+                                        Text(
+                                            "Weight: ${parcel.weight} kg",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (parcel.dimensions.isNotEmpty()) {
+                                        Text(
+                                            "Dimensions: ${parcel.dimensions}",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                TextButton(onClick = { onDeleteParcel(index) }) {
+                                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
                     }
                 }
@@ -517,39 +544,39 @@ fun AddParcelDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("添加包裹") },
+        title = { Text("Add Parcel") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = parcel.description,
                     onValueChange = { onParcelChange(parcel.copy(description = it)) },
-                    label = { Text("包裹描述") },
+                    label = { Text("Parcel's Description") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = parcel.weight,
                     onValueChange = { onParcelChange(parcel.copy(weight = it)) },
-                    label = { Text("重量 (kg)") },
+                    label = { Text("Weight (kg)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = parcel.dimensions,
                     onValueChange = { onParcelChange(parcel.copy(dimensions = it)) },
-                    label = { Text("尺寸") },
+                    label = { Text("Dimensions") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = parcel.description.isNotEmpty()) {
-                Text("添加")
+                Text("Add")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
-// -------------------- 汇总 --------------------
+/* ------------------------------------------- Summary ------------------------------------------ */
 @Composable
 fun SummarySection(order: Order) {
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -557,13 +584,14 @@ fun SummarySection(order: Order) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("订单汇总", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("总重量: ${order.totalWeight} kg")
-            Text("运费: RM ${"%.2f".format(order.cost)}")
+            Text("Order Summary", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("Total Weight: ${order.totalWeight} kg")
+            Text("Shipping Fee: RM ${"%.2f".format(Locale.ROOT, order.cost)}")
         }
     }
 }
 
+/* ---------------------------------------- ID  Generator --------------------------------------- */
 object OrderIdGenerator {
     private val hashids = Hashids("Log-Express", 8, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     private val dateFormat = SimpleDateFormat("yyMMdd", Locale.ROOT)
@@ -573,7 +601,7 @@ object OrderIdGenerator {
     fun generateOrderId(): String {
         val today = dateFormat.format(Date())
 
-        // 如果日期变了，重置 counter
+        // every new day, reset counter
         if (today != currentDate) {
             synchronized(this) {
                 if (today != currentDate) {
@@ -583,32 +611,17 @@ object OrderIdGenerator {
             }
         }
 
-        // 递增序列号
+        // Incrementing sequence number
         val sequence = counter.getAndIncrement()
 
-        // 用 Hashids 编码序列号
+        // Encoding Sequence Numbers with Hashids
         val encoded = hashids.encode(sequence.toLong())
 
         return "ORD-$today$encoded"
     }
 }
 
-// -------------------- 生成 QR / Barcode --------------------
-fun generateQRCode(text: String): Bitmap? {
-    return try {
-        val writer = QRCodeWriter()
-        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 300, 300)
-        val width = bitMatrix.width
-        val height = bitMatrix.height
-        val bitmap = createBitmap(width, height, Bitmap.Config.RGB_565)
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                bitmap[x, y] = if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb()
-            }
-        }
-        bitmap
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
-    }
+fun generateParcelId(orderId: String, sequenceNumber: Int): String {
+    val formattedSequence = String.format(Locale.ROOT, "%02d", sequenceNumber)
+    return "PAR-${orderId.removePrefix("ORD-")}-$formattedSequence"
 }

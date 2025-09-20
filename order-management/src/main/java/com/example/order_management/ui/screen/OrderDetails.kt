@@ -11,6 +11,17 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.FieldPath
+import android.graphics.Bitmap
+import android.graphics.Bitmap.Config
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.set
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import org.json.JSONObject
+
 
 // ---------------- 数据类 ----------------
 data class ParcelInfo(
@@ -20,7 +31,6 @@ data class ParcelInfo(
     val dimensions: String = "",
     val value: String = ""
 )
-
 @Composable
 fun OrderDetailScreen(orderId: String) {
     val db = FirebaseFirestore.getInstance()
@@ -42,19 +52,27 @@ fun OrderDetailScreen(orderId: String) {
                 if (snapshot != null && snapshot.exists()) {
                     val senderId = snapshot.getString("sender_id") ?: "未知"
                     val receiverId = snapshot.getString("receiver_id") ?: "未知"
-                    val parcelIds = snapshot.get("parcel_id") as? List<String> ?: emptyList()
+                    val parcelIds = snapshot.get("parcel_ids") as? List<String> ?: emptyList()
 
-                    // 查询 sender/receiver 名字
+                    // ✅ 查询 sender 名字
                     if (senderId != "未知") {
-                        db.collection("customers").document(senderId).get()
-                            .addOnSuccessListener { doc ->
-                                senderName = doc.getString("name") ?: senderId
+                        db.collection("customers")
+                            .whereEqualTo("id", senderId)
+                            .limit(1)
+                            .get()
+                            .addOnSuccessListener { result ->
+                                senderName = result.documents.firstOrNull()?.getString("name") ?: senderId
                             }
                     }
+
+                    // ✅ 查询 receiver 名字
                     if (receiverId != "未知") {
-                        db.collection("customers").document(receiverId).get()
-                            .addOnSuccessListener { doc ->
-                                receiverName = doc.getString("name") ?: receiverId
+                        db.collection("customers")
+                            .whereEqualTo("id", receiverId)
+                            .limit(1)
+                            .get()
+                            .addOnSuccessListener { result ->
+                                receiverName = result.documents.firstOrNull()?.getString("name") ?: receiverId
                             }
                     }
 
@@ -74,7 +92,7 @@ fun OrderDetailScreen(orderId: String) {
                                             id = doc.id,
                                             description = doc.getString("description") ?: "",
                                             weight = doc.getString("weight") ?: "",
-                                            dimensions = doc.getString("size") ?: "",
+                                            dimensions = doc.getString("dimensions") ?: "",
                                             value = doc.getString("value") ?: ""
                                         )
                                     }
@@ -92,6 +110,24 @@ fun OrderDetailScreen(orderId: String) {
         }
     }
 
+    // ✅ 缓存 QR 生成，只在依赖变化时触发
+    val qrCodeBitmap by remember(orderId, senderName, receiverName, parcels) {
+        mutableStateOf(
+            if (senderName != "加载中..." && receiverName != "加载中...") {
+                generateQRCode(
+                    JSONObject().apply {
+                        put("orderId", orderId)
+                        put("sender", senderName)
+                        put("receiver", receiverName)
+                        put("parcelCount", parcels.size)
+                    }.toString()
+                )
+            } else {
+                null
+            }
+        )
+    }
+
     // ---------------- UI ----------------
     Column(modifier = Modifier.padding(16.dp)) {
         Text("订单详情: $orderId", fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -100,6 +136,19 @@ fun OrderDetailScreen(orderId: String) {
 
         Text("寄件人: $senderName", fontSize = 14.sp)
         Text("收件人: $receiverName", fontSize = 14.sp)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ✅ 显示二维码
+        qrCodeBitmap?.let { bmp ->
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "订单二维码",
+                modifier = Modifier
+                    .size(200.dp)
+                    .padding(8.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -114,6 +163,7 @@ fun OrderDetailScreen(orderId: String) {
         }
     }
 }
+
 
 @Composable
 private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
@@ -131,9 +181,26 @@ private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
             if (parcel.dimensions.isNotEmpty()) {
                 Text("尺寸: ${parcel.dimensions}", fontSize = 12.sp, color = Color.Gray)
             }
-            if (parcel.value.isNotEmpty()) {
-                Text("价值: RM ${parcel.value}", fontSize = 12.sp, color = Color.Gray)
+        }
+    }
+}
+
+/* ------------------------------------ Generate QR / Barcode ----------------------------------- */
+fun generateQRCode(text: String): Bitmap? {
+    return try {
+        val writer = QRCodeWriter()
+        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 300, 300)
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val bitmap = createBitmap(width, height, Bitmap.Config.RGB_565)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap[x, y] = if (bitMatrix[x, y]) Color.Black.toArgb() else Color.White.toArgb()
             }
         }
+        bitmap
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
