@@ -1,10 +1,8 @@
 package com.example.order_management.ui.screen
 
-import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +23,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,19 +45,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.set
 import androidx.navigation.NavController
 import com.example.order_management.ui.screen.OrderIdGenerator.generateOrderId
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.tasks.await
 import org.hashids.Hashids
 import java.text.SimpleDateFormat
@@ -179,7 +170,7 @@ fun AddOrderScreen(
 
             // Submit Button
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
                         parcels.forEach { parcel ->
@@ -197,6 +188,8 @@ fun AddOrderScreen(
                 ) {
                     Text("Submit Order", fontSize = 16.sp)
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }

@@ -99,21 +99,14 @@ fun SearchOrderAndParcelScreen(
         onDispose { listener.remove() }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(
-                navController = navController,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-    ) { innerPadding ->
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F8F8))
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
                 .padding(16.dp)
-                .background(Color.White)
         ) {
             // Search bar
             SearchBar(
@@ -129,7 +122,7 @@ fun SearchOrderAndParcelScreen(
             // Filter
             FilterBy(
                 selectedFilter = selectedFilter,
-                options = listOf("name (A~Z)", "name (Z~A)", "Idle Rack", "Non-Idle Rack"),
+                options = listOf("Order ID (A~Z)", "Order ID (Z~A)"),
                 onFilterChange = { selectedFilter = it }
             )
 
@@ -149,6 +142,19 @@ fun SearchOrderAndParcelScreen(
                     )
                 }
             } else {
+
+                val filteredOrders = orders
+                    .filter {
+                        searchText.isEmpty() || it.id.contains(searchText, ignoreCase = true)
+                    }
+                    .let { list ->
+                        when (selectedFilter) {
+                            "Order ID (A~Z)" -> list.sortedBy { it.id }
+                            "Order ID (Z~A)" -> list.sortedByDescending { it.id }
+                            else -> list
+                        }
+                    }
+
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -156,18 +162,20 @@ fun SearchOrderAndParcelScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(8.dp)
                 ) {
-                    items(
-                        orders.filter {
-                            searchText.isEmpty() || it.id.contains(searchText, ignoreCase = true)
-                        }
-                    ) { order ->
+                    items(filteredOrders) { order ->
                         OrderListItem(order = order, onClick = {
                             navController.navigate("OrderDetails/${order.id}")
                         })
                     }
                 }
+
             }
         }
+
+        FloatingActionButton(
+            navController = navController,
+            modifier = Modifier.padding()
+        )
     }
 }
 
