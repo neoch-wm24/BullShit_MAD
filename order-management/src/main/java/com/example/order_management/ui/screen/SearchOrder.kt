@@ -13,16 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import com.example.core_ui.components.BottomBar
-import com.example.core_ui.components.TopBar
 import com.example.core_ui.components.SearchBar
 import com.example.core_ui.components.FilterBy
-import com.example.core_ui.theme.LogisticManagementApplicationTheme
 import com.example.order_management.ui.components.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -241,7 +236,7 @@ fun SearchOrderAndParcelScreen(
                         IconButton(
                             onClick = {
                                 selectedOrders.forEach { order ->
-                                    db.collection("orders").document(order.id).delete()
+                                    OrderRepository.deleteOrderWithParcels(order.id)
                                 }
                                 selectedOrders = emptySet()
                                 isMultiSelectMode = false
@@ -272,33 +267,6 @@ fun OrderListItem(order: OrderSummary, onClick: () -> Unit) {
             Text("Sender: ${order.senderName}")
             Text("Receiver: ${order.receiverName}")
             Text("Parcels: ${order.parcelCount}")
-        }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun OrderAndParcelWithNavigationPreview() {
-    LogisticManagementApplicationTheme {
-        val navController = rememberNavController()
-
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF8F8F8)),
-            topBar = {
-                TopBar(navController = navController)
-            },
-            bottomBar = {
-                BottomBar(navController = navController)
-            }
-        ) { innerPadding ->
-            SearchOrderAndParcelScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                navController = navController,
-            )
         }
     }
 }

@@ -59,7 +59,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 
-
 /* ----------------------------------------- Data Class ----------------------------------------- */
 data class Parcel(
     val id: String = "",
@@ -125,7 +124,6 @@ fun AddOrderScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 订单ID + QR
             item { OrderInfoSection(order = order) }
 
             // Sender Selector
@@ -243,7 +241,7 @@ fun OrderInfoSection(order: Order) {
 @Composable
 fun CustomerSelector(
     title: String,
-    selectedCustomerId: String? = null, // 👈 新增: 传入已有的 Customer ID
+    selectedCustomerId: String? = null,
     onCustomerSelected: (String) -> Unit
 ) {
     val db = FirebaseFirestore.getInstance()
@@ -252,9 +250,8 @@ fun CustomerSelector(
     var selectedCustomer by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var searchText by remember { mutableStateOf("") }
+    var displayText by remember { mutableStateOf("") }
 
-    // 🔹 加载 Customers
     LaunchedEffect(Unit) {
         try {
             val snapshot = db.collection("customers").get().await()
@@ -265,9 +262,9 @@ fun CustomerSelector(
                 Triple(id, name, address)
             }
 
-            // 👇 如果传了 selectedCustomerId，初始化时自动选中
             if (!selectedCustomerId.isNullOrEmpty()) {
                 selectedCustomer = customers.find { it.first == selectedCustomerId }
+                displayText = selectedCustomer?.second ?: ""
             }
 
             isLoading = false
@@ -286,18 +283,21 @@ fun CustomerSelector(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 搜索框 & 下拉按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = selectedCustomer?.second ?: searchText,
-                    onValueChange = {
-                        if (selectedCustomer == null) {
-                            searchText = it
-                            expanded = true
+                    value = displayText,
+                    onValueChange = { newValue ->
+                        displayText = newValue
+
+                        if (selectedCustomer != null && newValue != selectedCustomer!!.second) {
+                            selectedCustomer = null
+                            onCustomerSelected("")
                         }
+
+                        expanded = newValue.isNotEmpty() || customers.isNotEmpty()
                     },
                     modifier = Modifier.weight(1f),
                     label = {
@@ -324,8 +324,9 @@ fun CustomerSelector(
                                 IconButton(
                                     onClick = {
                                         selectedCustomer = null
-                                        searchText = ""
+                                        displayText = ""
                                         expanded = false
+                                        onCustomerSelected("")
                                     }
                                 ) {
                                     Icon(
@@ -357,7 +358,6 @@ fun CustomerSelector(
                 }
             }
 
-            // Customer 列表
             AnimatedVisibility(
                 visible = expanded && customers.isNotEmpty(),
                 enter = expandVertically(),
@@ -372,15 +372,15 @@ fun CustomerSelector(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp) // Limit maximum height
+                            .heightIn(max = 200.dp)
                     ) {
                         val filteredCustomers = customers.filter { customer ->
-                            customer.second.contains(searchText, ignoreCase = true) ||
-                                    customer.first.contains(searchText, ignoreCase = true) ||
-                                    customer.third.contains(searchText, ignoreCase = true)
+                            customer.second.contains(displayText, ignoreCase = true) ||
+                                    customer.first.contains(displayText, ignoreCase = true) ||
+                                    customer.third.contains(displayText, ignoreCase = true)
                         }
 
-                        if (filteredCustomers.isEmpty() && searchText.isNotEmpty()) {
+                        if (filteredCustomers.isEmpty() && displayText.isNotEmpty()) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -403,14 +403,14 @@ fun CustomerSelector(
                                         .fillMaxWidth()
                                         .clickable {
                                             selectedCustomer = customer
-                                            searchText = ""
+                                            displayText = customer.second
                                             expanded = false
-                                            onCustomerSelected(customer.first) // 返回 ID
+                                            onCustomerSelected(customer.first)
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp)
                                 ) {
                                     Text(
-                                        text = customer.second, // name
+                                        text = customer.second,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -432,6 +432,7 @@ fun CustomerSelector(
                     }
                 }
             }
+
             // error message display
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -444,8 +445,6 @@ fun CustomerSelector(
         }
     }
 }
-
-
 @Composable
 fun ParcelListSection(
     parcels: List<Parcel>,
@@ -489,7 +488,6 @@ fun ParcelListSection(
                                 .padding(12.dp)
                                 .fillMaxWidth()
                         ) {
-                            // 🟢 上半部分：Parcel 信息
                             Text("Parcel ID: ${parcel.id}", fontWeight = FontWeight.Medium, fontSize = 14.sp)
                             if (parcel.description.isNotEmpty()) {
                                 Text("Description: ${parcel.description}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -501,7 +499,6 @@ fun ParcelListSection(
                                 Text("Dimensions: ${parcel.dimensions}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
 
-                            // 🔽 下半部分：右下角 Delete 按钮
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
