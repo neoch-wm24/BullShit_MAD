@@ -1,26 +1,31 @@
 package com.example.warehouse_management
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.warehouse_management.ui.screen.InStockScreen
 import com.example.warehouse_management.ui.screen.SearchRackScreen
 import com.example.warehouse_management.ui.screen.AddRackScreen
 import com.example.warehouse_management.ui.screen.RackInformationScreen
+import com.example.warehouse_management.ui.screen.OutStockScreen
 
 fun NavGraphBuilder.warehouseNavigation(navController: NavHostController) {
-    // Order 相关页面
+    // 仓库主界面（搜索货架）
     composable("warehouse") {
         SearchRackScreen(
             navController = navController
         )
     }
 
-    composable("RackDetails/{rackId}"
+    // 货架详情
+    composable(
+        route = "RackDetails/{rackId}",
+        arguments = listOf(
+            navArgument("rackId") { type = NavType.StringType }
+        )
     ) { backStackEntry ->
         val rackId = backStackEntry.arguments?.getString("rackId") ?: ""
         RackInformationScreen(
@@ -30,10 +35,66 @@ fun NavGraphBuilder.warehouseNavigation(navController: NavHostController) {
         )
     }
 
+    // 添加货架
     composable("AddRack") {
         AddRackScreen(
             navController = navController,
             modifier = Modifier
+        )
+    }
+
+    // 入库界面
+    composable(
+        route = "inStock/{orderId}/{sender}/{receiver}/{parcelCount}",
+        arguments = listOf(
+            navArgument("orderId") { type = NavType.StringType },
+            navArgument("sender") { type = NavType.StringType },
+            navArgument("receiver") { type = NavType.StringType },
+            navArgument("parcelCount") { type = NavType.IntType }
+        )
+    ) { backStackEntry ->
+        val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+        val sender = backStackEntry.arguments?.getString("sender") ?: ""
+        val receiver = backStackEntry.arguments?.getString("receiver") ?: ""
+        val parcelCount = backStackEntry.arguments?.getInt("parcelCount") ?: 0
+
+        InStockScreen(
+            orderId = orderId,
+            sender = sender,
+            receiver = receiver,
+            parcelCount = parcelCount,
+            totalWeight = "0.0", // Default value since not available from QR scan
+            navController = navController
+        )
+    }
+
+    // 出库界面
+    composable(
+        route = "outStock/{orderId}/{sender}/{receiver}/{parcelCount}/{rackName}",
+        arguments = listOf(
+            navArgument("orderId") { type = NavType.StringType },
+            navArgument("sender") { type = NavType.StringType },
+            navArgument("receiver") { type = NavType.StringType },
+            navArgument("parcelCount") { type = NavType.IntType },
+            navArgument("rackName") {
+                type = NavType.StringType
+                defaultValue = ""
+            }
+        )
+    ) { backStackEntry ->
+        val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+        val sender = backStackEntry.arguments?.getString("sender") ?: ""
+        val receiver = backStackEntry.arguments?.getString("receiver") ?: ""
+        val parcelCount = backStackEntry.arguments?.getInt("parcelCount") ?: 0
+        val rackName = backStackEntry.arguments?.getString("rackName") ?: ""
+
+        OutStockScreen(
+            orderId = orderId,
+            sender = sender,
+            receiver = receiver,
+            parcelCount = parcelCount,
+            currentRackName = rackName,
+            navController = navController
         )
     }
 }

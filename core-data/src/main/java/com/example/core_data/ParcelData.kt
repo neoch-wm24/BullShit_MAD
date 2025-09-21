@@ -28,7 +28,8 @@ data class AllParcelData(
     val timestamp: Date,
     val sender: AddressInfo,
     val recipient: AddressInfo,
-    val parcels: List<ParcelInfo>
+    val parcels: List<ParcelInfo>,
+    val status: String = "In-Stock" // Add status field: "In-Stock", "Out-Stock"
 )
 
 // Global state manager for parcel data
@@ -38,6 +39,24 @@ object ParcelDataManager {
 
     fun addOrder(orderData: AllParcelData) {
         _allParcelData.add(orderData)
+    }
+
+    fun removeOrder(orderId: String) {
+        _allParcelData.removeAll { it.id == orderId }
+    }
+
+    // New method to update order status instead of removing
+    fun updateOrderStatus(orderId: String, newStatus: String) {
+        val index = _allParcelData.indexOfFirst { it.id == orderId }
+        if (index != -1) {
+            val currentOrder = _allParcelData[index]
+            _allParcelData[index] = currentOrder.copy(status = newStatus)
+        }
+    }
+
+    // Get only in-stock orders for display in RackInformation
+    fun getInStockOrders(): List<AllParcelData> {
+        return _allParcelData.filter { it.status == "In-Stock" }
     }
 
     fun getOrderById(id: String): AllParcelData? {
@@ -92,7 +111,8 @@ object ParcelDataManager {
             timestamp = Date(),
             sender = senderInfo,
             recipient = receiverInfo,
-            parcels = parcels
+            parcels = parcels,
+            status = "In-Stock" // Default status when adding new order
         )
 
         addOrder(orderData)

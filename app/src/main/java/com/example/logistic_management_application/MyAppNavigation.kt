@@ -112,6 +112,7 @@ fun MyAppNavigation(
 
             composable("scan") {
                 ScanScreen(
+                    navController = navController,
                     modifier = Modifier.padding(innerPadding)
                 )
             }

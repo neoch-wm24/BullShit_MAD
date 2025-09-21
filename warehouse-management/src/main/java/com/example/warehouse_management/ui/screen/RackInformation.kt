@@ -57,7 +57,7 @@ fun RackInformationScreen(
     }
 
     // ④ 正常显示 - 使用 LazyColumn 包装整个页面
-    val allParcelData = ParcelDataManager.allParcelData // Get all parcel data from ParcelDataManager
+    val allParcelData = ParcelDataManager.getInStockOrders() // Only get In-Stock orders
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -80,11 +80,11 @@ fun RackInformationScreen(
             RackInfoCard(rackInfo = rackInfo)
         }
 
-        // Add parcel information if there are any parcels
+        // Add parcel information if there are any in-stock parcels
         if (allParcelData.isNotEmpty()) {
             item {
                 Text(
-                    text = "Associated Parcels",
+                    text = "Order List",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFFF69B4),
@@ -93,7 +93,16 @@ fun RackInformationScreen(
             }
 
             items(allParcelData) { orderData ->
-                ParcelOrderCard(orderData = orderData)
+                OrderListCard(orderData = orderData)
+            }
+        } else {
+            item {
+                Text(
+                    text = "No Orders available",
+                    fontSize = 16.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 20.dp, bottom = 6.dp)
+                )
             }
         }
 
@@ -151,24 +160,26 @@ private fun DividerSpacer() {
 }
 
 @Composable
-fun ParcelOrderCard(orderData: AllParcelData) {
+fun OrderListCard(orderData: AllParcelData) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 1.dp), // ✅ 外部间距收紧
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // ✅ 降低阴影，显得更紧凑
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp) // ✅ 左右多一点，垂直少一点
         ) {
             // Order ID
             Text(
                 text = "Order ID: ${orderData.id}",
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold, // ✅ 改 SemiBold，不会太厚
                 color = Color.Black
             )
+
+            Spacer(modifier = Modifier.height(2.dp)) // ✅ 微小间距，避免文字贴太紧
 
             // Date
             Text(
@@ -176,97 +187,9 @@ fun ParcelOrderCard(orderData: AllParcelData) {
                     java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(orderData.timestamp)
                 }",
                 fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            // Horizontal divider
-            HorizontalDivider(
-                color = Color.LightGray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-
-            // Sender and Recipient
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Sender:", fontSize = 12.sp, color = Color.Gray)
-                    Text(
-                        text = orderData.sender.information,
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Recipient:", fontSize = 12.sp, color = Color.Gray)
-                    Text(
-                        text = orderData.recipient.information,
-                        fontSize = 14.sp,
-                        color = Color.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Horizontal divider
-            HorizontalDivider(
-                color = Color.LightGray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-
-            // Number of Parcels
-            Text(
-                text = "Number of Parcels: ${orderData.parcels.size}",
-                fontSize = 14.sp,
-                color = Color.Black,
-                fontWeight = FontWeight.Medium
-            )
-
-            // Parcel list
-            if (orderData.parcels.isNotEmpty()) {
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    orderData.parcels.forEachIndexed { index, parcel ->
-                        ParcelInfoItem(index = index + 1, parcel = parcel)
-                    }
-                }
-            }
-
-            // Final horizontal divider
-            HorizontalDivider(
-                color = Color.LightGray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(top = 12.dp)
+                color = Color.Gray
             )
         }
-    }
-}
-
-@Composable
-private fun ParcelInfoItem(index: Int, parcel: ParcelInfo) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "$index. ",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.DarkGray
-        )
-        Text(
-            text = parcel.information,
-            fontSize = 14.sp,
-            color = Color.Black,
-            modifier = Modifier.weight(1f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 

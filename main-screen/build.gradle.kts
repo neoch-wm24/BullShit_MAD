@@ -64,7 +64,6 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.lottie.compose)
 
-
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))
     implementation(project(":core-data")) // Added for RackManager and ParcelDataManager
