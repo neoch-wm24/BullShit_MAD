@@ -7,9 +7,9 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.order_management.ui.screen.AddOrderScreen
+import com.example.order_management.ui.screen.EditOrderScreen
 import com.example.order_management.ui.screen.OrderDetailScreen
 import com.example.order_management.ui.screen.SearchOrderAndParcelScreen
-import com.example.order_management.ui.screen.SelectOrderandParcelScreen
 
 fun NavGraphBuilder.orderNavigation(navController: NavHostController) {
     // Order 相关页面
@@ -25,13 +25,9 @@ fun NavGraphBuilder.orderNavigation(navController: NavHostController) {
         arguments = listOf(navArgument("orderId") { type = NavType.StringType })
     ) { backStackEntry ->
         val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
-        OrderDetailScreen(orderId = orderId)
-    }
-
-    composable("multiple_select") {
-        SelectOrderandParcelScreen(
+        OrderDetailScreen(
             navController = navController,
-        )
+            orderId = orderId)
     }
 
     composable("AddOrder") {
@@ -39,5 +35,15 @@ fun NavGraphBuilder.orderNavigation(navController: NavHostController) {
             navController = navController,
             modifier = Modifier
         )
+    }
+
+    composable("Edit_Order/{orderId}") { backStackEntry ->
+        val orderId = backStackEntry.arguments?.getString("orderId")
+        orderId?.let {
+            EditOrderScreen(
+                navController = navController,
+                orderId = it
+            )
+        }
     }
 }

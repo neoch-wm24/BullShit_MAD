@@ -47,6 +47,7 @@ private fun getTitleByRoute(route: String?): String{
         route == "order" -> stringResource(id = R.string.order_pt)
         route == "AddOrder" -> stringResource(id = R.string.add_order_pt)
         route?.startsWith("OrderDetails") == true -> stringResource(id = R.string.order_details_pt)
+        route?.startsWith("Edit_Order") == true -> stringResource(id = R.string.edit_order_pt)
         route == "warehouse" -> stringResource(id = R.string.warehouse_pt)
         route == "AddRack" -> stringResource(id = R.string.add_rack_pt)
         route?.startsWith("RackDetails") == true -> stringResource(id = R.string.rack_details_pt)

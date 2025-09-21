@@ -243,6 +243,7 @@ fun OrderInfoSection(order: Order) {
 @Composable
 fun CustomerSelector(
     title: String,
+    selectedCustomerId: String? = null, // 👈 新增: 传入已有的 Customer ID
     onCustomerSelected: (String) -> Unit
 ) {
     val db = FirebaseFirestore.getInstance()
@@ -253,7 +254,7 @@ fun CustomerSelector(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var searchText by remember { mutableStateOf("") }
 
-    // Load customers from Firestore
+    // 🔹 加载 Customers
     LaunchedEffect(Unit) {
         try {
             val snapshot = db.collection("customers").get().await()
@@ -263,6 +264,12 @@ fun CustomerSelector(
                 val address = doc.getString("address") ?: "no address"
                 Triple(id, name, address)
             }
+
+            // 👇 如果传了 selectedCustomerId，初始化时自动选中
+            if (!selectedCustomerId.isNullOrEmpty()) {
+                selectedCustomer = customers.find { it.first == selectedCustomerId }
+            }
+
             isLoading = false
         } catch (e: Exception) {
             errorMessage = "loading customer list failed: ${e.message}"
@@ -279,7 +286,7 @@ fun CustomerSelector(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // search bar & dropdown button
+            // 搜索框 & 下拉按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -334,10 +341,9 @@ fun CustomerSelector(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // dropdown button
+                // 下拉按钮
                 IconButton(
                     onClick = {
-                        println("click drop dwn button, customers: ${customers.size}, expanded: $expanded") // test
                         if (!isLoading && customers.isNotEmpty()) {
                             expanded = !expanded
                         }
@@ -351,7 +357,7 @@ fun CustomerSelector(
                 }
             }
 
-            // Customer List
+            // Customer 列表
             AnimatedVisibility(
                 visible = expanded && customers.isNotEmpty(),
                 enter = expandVertically(),
@@ -368,7 +374,6 @@ fun CustomerSelector(
                             .fillMaxWidth()
                             .heightIn(max = 200.dp) // Limit maximum height
                     ) {
-                        // filter customers list by search text
                         val filteredCustomers = customers.filter { customer ->
                             customer.second.contains(searchText, ignoreCase = true) ||
                                     customer.first.contains(searchText, ignoreCase = true) ||
@@ -400,7 +405,7 @@ fun CustomerSelector(
                                             selectedCustomer = customer
                                             searchText = ""
                                             expanded = false
-                                            onCustomerSelected(customer.first) // 传 id
+                                            onCustomerSelected(customer.first) // 返回 ID
                                         }
                                         .padding(horizontal = 16.dp, vertical = 12.dp)
                                 ) {
@@ -410,7 +415,7 @@ fun CustomerSelector(
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
-                                        text = "Address: ${customer.third}", // address
+                                        text = "Address: ${customer.third}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -427,7 +432,6 @@ fun CustomerSelector(
                     }
                 }
             }
-
             // error message display
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -440,6 +444,7 @@ fun CustomerSelector(
         }
     }
 }
+
 
 @Composable
 fun ParcelListSection(

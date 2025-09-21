@@ -34,16 +34,21 @@ data class ActionButtonItem(
 
 // 主要浮动操作按钮组件
 @Composable
-fun FloatingActionButton(navController: NavController, modifier: Modifier = Modifier) {
+fun FloatingActionButton(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    onToggleMultiSelect: (() -> Unit)? = null
+) {
     val actionButtonItemList = listOf(
-        ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select", "multiple_select"),
+        ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select Orders", "order_multiple_select"),
         ActionButtonItem(Icons.Default.Add, "Add", "AddOrder")
     )
 
     NavigationActionButton(
         navController = navController,
         items = actionButtonItemList,
-        modifier = modifier
+        modifier = modifier,
+        onToggleMultiSelect = onToggleMultiSelect
     )
 }
 
@@ -52,13 +57,13 @@ fun FloatingActionButton(navController: NavController, modifier: Modifier = Modi
 fun NavigationActionButton(
     navController: NavController,
     items: List<ActionButtonItem>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleMultiSelect: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val currentDestination by navController.currentBackStackEntryAsState()
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -66,9 +71,6 @@ fun NavigationActionButton(
                 .align(Alignment.BottomEnd)
                 .padding(end = 24.dp, bottom = 24.dp)
         ) {
-            // 自动状态管理 - 自动监听路由变化
-            val currentDestination by navController.currentBackStackEntryAsState()
-
             if (expanded) {
                 items.forEach { item ->
                     val isSelected = currentDestination?.destination?.route == item.route
@@ -77,22 +79,26 @@ fun NavigationActionButton(
                         item = item,
                         isSelected = isSelected,
                         onClick = {
-                            // 自动导航逻辑 - 统一的导航处理
-                            if (currentDestination?.destination?.route != item.route) {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                            if (item.route == "order_multiple_select") {
+                                onToggleMultiSelect?.invoke() // ✅ 多选模式回调
+                            } else {
+                                if (currentDestination?.destination?.route != item.route) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             }
-                        },
-                        modifier = Modifier
+                            expanded = false
+                        }
                     )
                 }
             }
 
+            // 主按钮
             ActionButton(
                 item = ActionButtonItem(
                     icon = if (expanded) Icons.Default.Close else Icons.Default.Build,
@@ -100,8 +106,7 @@ fun NavigationActionButton(
                     route = ""
                 ),
                 isSelected = false,
-                onClick = { expanded = !expanded },
-                modifier = Modifier
+                onClick = { expanded = !expanded }
             )
         }
     }

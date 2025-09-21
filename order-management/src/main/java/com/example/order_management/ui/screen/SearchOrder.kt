@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +42,8 @@ fun SearchOrderAndParcelScreen(
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
 
+    var isMultiSelectMode by remember { mutableStateOf(false) }
+    var selectedOrders by remember { mutableStateOf(setOf<OrderSummary>()) }
     val db = FirebaseFirestore.getInstance()
     var orders by remember { mutableStateOf<List<OrderSummary>>(emptyList()) }
 
@@ -106,7 +110,7 @@ fun SearchOrderAndParcelScreen(
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(16.dp,16.dp, 16.dp, bottom = 25.dp)
         ) {
             // Search bar
             SearchBar(
@@ -160,22 +164,96 @@ fun SearchOrderAndParcelScreen(
                         .weight(1f)
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(8.dp)
+                    contentPadding = PaddingValues(8.dp, bottom = if (isMultiSelectMode) 60.dp else 8.dp),
                 ) {
                     items(filteredOrders) { order ->
-                        OrderListItem(order = order, onClick = {
-                            navController.navigate("OrderDetails/${order.id}")
-                        })
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isMultiSelectMode) {
+                                Checkbox(
+                                    checked = order in selectedOrders,
+                                    onCheckedChange = { checked ->
+                                        selectedOrders = if (checked) {
+                                            selectedOrders + order
+                                        } else {
+                                            selectedOrders - order
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+
+                            OrderListItem(order = order) {
+                                if (isMultiSelectMode) {
+                                    selectedOrders = if (order in selectedOrders) {
+                                        selectedOrders - order
+                                    } else {
+                                        selectedOrders + order
+                                    }
+                                } else {
+                                    navController.navigate("OrderDetails/${order.id}")
+                                }
+                            }
+                        }
                     }
                 }
 
             }
         }
 
-        FloatingActionButton(
-            navController = navController,
-            modifier = Modifier.padding()
-        )
+        if (!isMultiSelectMode){
+            FloatingActionButton(
+                navController = navController,
+                modifier = Modifier.padding(),
+                onToggleMultiSelect = {
+                    isMultiSelectMode = true
+                    selectedOrders = emptySet()
+                }
+            )
+        }
+
+        if (isMultiSelectMode) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(8.dp, end = 8.dp,bottom = 25.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp, vertical = 0.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Selected: ${selectedOrders.size}", style = MaterialTheme.typography.bodyLarge)
+
+                    Row {
+                        TextButton(onClick = {
+                            selectedOrders = emptySet()
+                            isMultiSelectMode = false
+                        }) {
+                            Text("Cancel")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                selectedOrders.forEach { order ->
+                                    db.collection("orders").document(order.id).delete()
+                                }
+                                selectedOrders = emptySet()
+                                isMultiSelectMode = false
+                            },
+                            enabled = selectedOrders.isNotEmpty()
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

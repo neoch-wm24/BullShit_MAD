@@ -14,6 +14,7 @@
     <string name="order_pt">Order and Parcel Management</string>
     <string name="add_order_pt">Add Order</string>
     <string name="order_details_pt">Order Details</string>
+    <string name="edit_order_pt">Edit Order Details</string>
 
     <string name="warehouse_pt">Warehouse Management</string>
     <string name="add_rack_pt">Add Rack</string>

@@ -12,10 +12,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
+import androidx.navigation.NavHostController
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -42,18 +54,18 @@ import org.json.JSONObject
 
 /* ------------------- Order Detail Screen ------------------- */
 @Composable
-fun OrderDetailScreen(orderId: String) {
+fun OrderDetailScreen(orderId: String, navController: NavHostController) {
     val db = FirebaseFirestore.getInstance()
 
     var order by remember { mutableStateOf<Order?>(null) }
     var parcels by remember { mutableStateOf<List<Parcel>>(emptyList()) }
     var senderName by remember { mutableStateOf("Loading...") }
     var receiverName by remember { mutableStateOf("Loading...") }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Firestore listeners
+    // Firestore listeners (保持你的逻辑不变)
     DisposableEffect(orderId) {
         var parcelListener: ListenerRegistration? = null
-
         val orderListener = db.collection("orders").document(orderId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -78,7 +90,6 @@ fun OrderDetailScreen(orderId: String) {
                         cost = cost
                     )
 
-                    // Query sender
                     if (senderId.isNotEmpty()) {
                         db.collection("customers").whereEqualTo("id", senderId).limit(1).get()
                             .addOnSuccessListener { result ->
@@ -86,7 +97,6 @@ fun OrderDetailScreen(orderId: String) {
                             }
                     }
 
-                    // Query receiver
                     if (receiverId.isNotEmpty()) {
                         db.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
                             .addOnSuccessListener { result ->
@@ -94,7 +104,6 @@ fun OrderDetailScreen(orderId: String) {
                             }
                     }
 
-                    // Listen for parcels
                     parcelListener?.remove()
                     if (parcelIds.isNotEmpty()) {
                         parcelListener = db.collection("parcels")
@@ -120,7 +129,6 @@ fun OrderDetailScreen(orderId: String) {
                     }
                 }
             }
-
         onDispose {
             orderListener.remove()
             parcelListener?.remove()
@@ -139,9 +147,7 @@ fun OrderDetailScreen(orderId: String) {
                         put("parcelCount", parcels.size)
                     }.toString()
                 )
-            } else {
-                null
-            }
+            } else null
         )
     }
 
@@ -149,11 +155,10 @@ fun OrderDetailScreen(orderId: String) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp,16.dp, 16.dp, bottom = 30.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            // Order ID
             Text(
                 text = "Order ID: $orderId",
                 fontSize = 18.sp,
@@ -163,7 +168,6 @@ fun OrderDetailScreen(orderId: String) {
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ------------------- QR Code -------------------
             qrCodeBitmap?.let { bmp ->
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Image(
@@ -176,7 +180,6 @@ fun OrderDetailScreen(orderId: String) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ------------------- Customer Details -------------------
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Customer Details", fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -187,7 +190,6 @@ fun OrderDetailScreen(orderId: String) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Order Summary
             order?.let {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -203,7 +205,6 @@ fun OrderDetailScreen(orderId: String) {
             Text("Parcel List (${parcels.size})", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
 
-        // Parcel list
         items(parcels.size) { index ->
             val parcel = parcels[index]
             Card(
@@ -215,7 +216,7 @@ fun OrderDetailScreen(orderId: String) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row {
                         Text("${index + 1}. Parcel ID: ", fontWeight = FontWeight.Medium)
-                        Text(parcel.id, fontSize = 14.sp) // smaller font for ID
+                        Text(parcel.id, fontSize = 14.sp)
                     }
                     if (parcel.description.isNotEmpty()) Text("Description: ${parcel.description}", fontSize = 14.sp)
                     if (parcel.weight.isNotEmpty()) Text("Weight: ${parcel.weight} kg", fontSize = 14.sp)
@@ -223,8 +224,70 @@ fun OrderDetailScreen(orderId: String) {
                 }
             }
         }
+
+        // ------------------- Action Buttons -------------------
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(
+                    onClick = { navController.navigate("Edit_Order/$orderId") },
+                    modifier = Modifier
+                        .height(40.dp)
+                        .widthIn(min = 90.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Edit", maxLines = 1, fontSize = 14.sp)
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Button(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier
+                        .height(40.dp)
+                        .widthIn(min = 90.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Delete", maxLines = 1, fontSize = 14.sp)
+                }
+            }
+        }
+    }
+
+    // ------------------- Delete Confirmation -------------------
+    if (showDeleteDialog && order != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirm Delete", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete Order ${order!!.id}?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        FirebaseFirestore.getInstance()
+                            .collection("orders")
+                            .document(order!!.id)
+                            .delete()
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    }
+                ) { Text("Confirm", color = Color.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
+
 
 /* ------------------- QR Code Generator ------------------- */
 fun generateQRCode(text: String): Bitmap? {
