@@ -18,10 +18,10 @@ import com.example.core_ui.components.Dashboard
 import com.example.core_ui.components.DashboardItem
 
 @Composable
-fun HomePage(navController: NavController, role: String) {
+fun HomePage(navController: NavController, role: String, employeeID: String? = null) {
     when (role) {
         "admin" -> AdminHome(navController)
-        "driver" -> DriverHome(navController)
+        "driver" -> DriverHome(navController, employeeID)
         else -> EmployeeHome(navController)
     }
 }
@@ -47,6 +47,10 @@ fun AdminHome(navController: NavController) {
 }
 
 @Composable
-fun DriverHome(navController: NavController) {
-    Text(text = "This is Driver Home Page")
+fun DriverHome(navController: NavController, employeeID: String?) {
+    com.example.delivery_and_transportation_management.ui.screen.DriverHome(
+        navController = navController,
+        employeeID = employeeID ?: "",
+        // deliveryViewModel will be provided by the delivery module's NavHost or via viewModel()
+    )
 }

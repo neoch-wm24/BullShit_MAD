@@ -68,7 +68,8 @@ fun MyAppNavigation(
                     is AuthState.Authenticated -> {
                         HomePage(
                             navController = navController,
-                            role = state.role
+                            role = state.role,
+                            employeeID = state.employeeID
                         )
                     }
                     is AuthState.Loading -> {
@@ -114,6 +115,7 @@ fun MyAppNavigation(
                     modifier = Modifier.padding(innerPadding)
                 )
             }
+
         }
     }
 }

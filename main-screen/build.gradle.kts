@@ -68,6 +68,7 @@ dependencies {
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))
     implementation(project(":core-data")) // Added for RackManager and ParcelDataManager
+    implementation(project(":delivery-and-transportation-management"))
     implementation(libs.androidx.foundation)
 
     testImplementation(libs.junit)

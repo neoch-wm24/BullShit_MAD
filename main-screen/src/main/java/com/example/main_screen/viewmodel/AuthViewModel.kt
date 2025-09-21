@@ -23,16 +23,16 @@ class AuthViewModel : ViewModel() {
         if (currentUser == null) {
             _authState.value = AuthState.Unauthenticated
         } else {
-            // 获取 role
             firestore.collection("users")
                 .document(currentUser.uid)
                 .get()
                 .addOnSuccessListener { document ->
                     val role = document.getString("role") ?: "employee"
-                    _authState.value = AuthState.Authenticated(role)
+                    val employeeID = document.getString("employeeID") ?: ""
+                    _authState.value = AuthState.Authenticated(role, employeeID)
                 }
                 .addOnFailureListener {
-                    _authState.value = AuthState.Authenticated("employee") // 默认
+                    _authState.value = AuthState.Authenticated("employee", "") // 默认
                 }
         }
     }
@@ -54,6 +54,7 @@ class AuthViewModel : ViewModel() {
                     val document = documents.documents[0]
                     val email = document.getString("email")
                     val role = document.getString("role") ?: "employee"
+                    val employeeIDFromDoc = document.getString("employeeID") ?: ""
 
                     if (email.isNullOrEmpty()) {
                         _authState.value = AuthState.Error("No email found for this Employee ID")
@@ -63,7 +64,7 @@ class AuthViewModel : ViewModel() {
                     auth.signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener { task ->
                             if (task.isSuccessful) {
-                                _authState.value = AuthState.Authenticated(role)
+                                _authState.value = AuthState.Authenticated(role, employeeIDFromDoc)
                             } else {
                                 _authState.value = AuthState.Error(task.exception?.message ?: "Login failed")
                             }
@@ -84,7 +85,7 @@ class AuthViewModel : ViewModel() {
 }
 
 sealed class AuthState {
-    data class Authenticated(val role: String) : AuthState()
+    data class Authenticated(val role: String, val employeeID: String) : AuthState()
     object Loading : AuthState()
     data class Error(val message: String) : AuthState()
     object Unauthenticated : AuthState()
