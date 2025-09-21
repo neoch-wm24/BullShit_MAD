@@ -9,17 +9,21 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven(url = "https://jitpack.io") // ✅ 插件依赖也能用 JitPack
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
+        maven(url = "https://jitpack.io") // ✅ 这里给依赖库用 JitPack
     }
 }
 
 rootProject.name = "Logistic-Management-Application"
+
 include(":app")
 include(":core-ui")
 include(":core-resources")

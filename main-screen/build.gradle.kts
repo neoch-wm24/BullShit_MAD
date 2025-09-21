@@ -68,6 +68,10 @@ dependencies {
     implementation(project(":core-ui"))
     implementation(project(":core-data")) // Added for RackManager and ParcelDataManager
     implementation(project(":delivery-and-transportation-management"))
+
+    // ✅ JitPack Charts
+    implementation("com.github.tehras:charts:0.2.4-alpha")
+
     implementation(libs.androidx.foundation)
 
     testImplementation(libs.junit)
