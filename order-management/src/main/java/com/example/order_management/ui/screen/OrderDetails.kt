@@ -63,7 +63,6 @@ fun OrderDetailScreen(orderId: String, navController: NavHostController) {
     var receiverName by remember { mutableStateOf("Loading...") }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Firestore listeners (保持你的逻辑不变)
     DisposableEffect(orderId) {
         var parcelListener: ListenerRegistration? = null
         val orderListener = db.collection("orders").document(orderId)
@@ -270,12 +269,15 @@ fun OrderDetailScreen(orderId: String, navController: NavHostController) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        FirebaseFirestore.getInstance()
-                            .collection("orders")
-                            .document(order!!.id)
-                            .delete()
-                        showDeleteDialog = false
-                        navController.popBackStack()
+                        OrderRepository.deleteOrderWithParcels(order!!.id,
+                            onComplete = {
+                                showDeleteDialog = false
+                                navController.popBackStack()
+                            },
+                            onError = { e ->
+                                println("Delete failed: ${e.message}")
+                            }
+                        )
                     }
                 ) { Text("Confirm", color = Color.Red) }
             },
@@ -306,5 +308,38 @@ fun generateQRCode(text: String): Bitmap? {
     } catch (e: Exception) {
         e.printStackTrace()
         null
+    }
+}
+
+object OrderRepository {
+    fun deleteOrderWithParcels(
+        orderId: String,
+        onComplete: (() -> Unit)? = null,
+        onError: ((Exception) -> Unit)? = null
+    ) {
+        val db = FirebaseFirestore.getInstance()
+        val orderRef = db.collection("orders").document(orderId)
+
+        orderRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val parcelIds = (snapshot.get("parcel_ids") as? List<*>)
+                    ?.filterIsInstance<String>()
+                    ?: emptyList()
+
+                val batch = db.batch()
+                parcelIds.forEach { parcelId ->
+                    val parcelRef = db.collection("parcels").document(parcelId)
+                    batch.delete(parcelRef)
+                }
+
+                batch.delete(orderRef)
+
+                batch.commit()
+                    .addOnSuccessListener { onComplete?.invoke() }
+                    .addOnFailureListener { e -> onError?.invoke(e) }
+            } else {
+                onComplete?.invoke()
+            }
+        }.addOnFailureListener { e -> onError?.invoke(e) }
     }
 }
