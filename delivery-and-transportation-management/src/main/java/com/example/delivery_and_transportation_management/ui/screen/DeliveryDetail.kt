@@ -12,7 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
-import com.example.delivery_and_transportation_management.ui.screen.Order
+import com.example.order_management.ui.screen.Order
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,70 +113,70 @@ fun DeliveryDetail(
             }
 
             // Orders List
-            if (assignedOrders.isNotEmpty()) {
-                items(assignedOrders) { order ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            Text(
-                                "Order #${order.id.take(8)}",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                "Customer: ${order.customerName}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                "📍 ${order.address}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "📦 ${order.items}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                AssistChip(
-                                    onClick = { },
-                                    label = {
-                                        Text(
-                                            order.priority,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = when (order.priority) {
-                                            "High" -> MaterialTheme.colorScheme.errorContainer
-                                            "Medium" -> MaterialTheme.colorScheme.tertiaryContainer
-                                            else -> MaterialTheme.colorScheme.surfaceVariant
-                                        }
-                                    )
-                                )
-                                AssistChip(
-                                    onClick = { },
-                                    label = {
-                                        Text(
-                                            order.status,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+//            if (assignedOrders.isNotEmpty()) {
+//                items(assignedOrders) { order ->
+//                    Card(
+//                        modifier = Modifier.fillMaxWidth(),
+//                        colors = CardDefaults.cardColors(
+//                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+//                        )
+//                    ) {
+//                        Column(
+//                            modifier = Modifier.padding(12.dp)
+//                        ) {
+//                            Text(
+//                                "Order #${order.id.take(8)}",
+//                                style = MaterialTheme.typography.titleSmall
+//                            )
+//                            Text(
+//                                "Customer: ${order.customerName}",
+//                                style = MaterialTheme.typography.bodyMedium
+//                            )
+//                            Text(
+//                                "📍 ${order.address}",
+//                                style = MaterialTheme.typography.bodySmall,
+//                                color = MaterialTheme.colorScheme.onSurfaceVariant
+//                            )
+//                            Text(
+//                                "📦 ${order.items}",
+//                                style = MaterialTheme.typography.bodySmall,
+//                                color = MaterialTheme.colorScheme.onSurfaceVariant
+//                            )
+//
+//                            Row(
+//                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+//                                modifier = Modifier.padding(top = 4.dp)
+//                            ) {
+//                                AssistChip(
+//                                    onClick = { },
+//                                    label = {
+//                                        Text(
+//                                            order.priority,
+//                                            style = MaterialTheme.typography.labelSmall
+//                                        )
+//                                    },
+//                                    colors = AssistChipDefaults.assistChipColors(
+//                                        containerColor = when (order.priority) {
+//                                            "High" -> MaterialTheme.colorScheme.errorContainer
+//                                            "Medium" -> MaterialTheme.colorScheme.tertiaryContainer
+//                                            else -> MaterialTheme.colorScheme.surfaceVariant
+//                                        }
+//                                    )
+//                                )
+//                                AssistChip(
+//                                    onClick = { },
+//                                    label = {
+//                                        Text(
+//                                            order.status,
+//                                            style = MaterialTheme.typography.labelSmall
+//                                        )
+//                                    }
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
+//            }
 
             // Action Buttons
             item {

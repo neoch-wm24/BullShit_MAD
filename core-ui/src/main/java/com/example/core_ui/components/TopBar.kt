@@ -40,18 +40,28 @@ private fun getTitleByRoute(route: String?): String{
     return when {
         route == "home" -> stringResource(id = R.string.home_pt)
         route == "report" -> stringResource(id = R.string.report_pt)
+
         route == "user" -> stringResource(id = R.string.user_pt)
         route == "AddUser" -> stringResource(id = R.string.add_user_pt)
         route?.startsWith("CustomerDetails") == true -> stringResource(id = R.string.customer_details_pt)
         route?.startsWith("Edit_User") == true -> stringResource(id = R.string.edit_user_pt)
+
         route == "order" -> stringResource(id = R.string.order_pt)
         route == "AddOrder" -> stringResource(id = R.string.add_order_pt)
         route?.startsWith("OrderDetails") == true -> stringResource(id = R.string.order_details_pt)
         route?.startsWith("Edit_Order") == true -> stringResource(id = R.string.edit_order_pt)
+
         route == "warehouse" -> stringResource(id = R.string.warehouse_pt)
         route == "AddRack" -> stringResource(id = R.string.add_rack_pt)
         route?.startsWith("RackDetails") == true -> stringResource(id = R.string.rack_details_pt)
+
         route == "delivery" -> stringResource(id = R.string.delivery_pt)
+        route == "AddTransportation" -> stringResource(id = R.string.add_transportation_pt)
+        route?.startsWith("DeliveryDetails") == true -> stringResource(id = R.string.delivery_details_pt)
+        route?.startsWith("Edit_Delivery") == true -> stringResource(id = R.string.edit_delivery_pt)
+        route == "Delivery_Schedule" -> stringResource(id = R.string.delivery_schedule_pt)
+        route?.startsWith("AssignOrders") == true -> stringResource(id = R.string.assign_orders_pt)
+
         route == "scan" -> stringResource(id = R.string.scan_pt)
         route == "profile" -> stringResource(id = R.string.profile_pt)
         route == "setting" -> stringResource(id = R.string.setting_pt)

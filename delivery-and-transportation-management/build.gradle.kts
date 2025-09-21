@@ -52,8 +52,15 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.runtime.livedata)
+
+    //fire base
+    implementation(libs.androidx.runtime.livedata)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore.ktx)
+
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))
+    implementation(project(":order-management"))
 
     // Google Maps Compose
     implementation("com.google.maps.android:maps-compose:4.3.3")

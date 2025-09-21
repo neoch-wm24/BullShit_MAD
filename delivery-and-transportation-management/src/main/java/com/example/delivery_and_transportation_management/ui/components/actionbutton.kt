@@ -52,8 +52,8 @@ fun ActionButtonMenu(
 ) {
     val actionButtonItemList = listOf(
         ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select", "multiple_select"),
-        ActionButtonItem(Icons.Default.Add, "Add Transportation", "add_transportation"),
-        ActionButtonItem(Icons.Default.DateRange, "Schedule", "delivery_schedule") // 📅 New
+        ActionButtonItem(Icons.Default.Add, "Add Transportation", "AddTransportation"),
+        ActionButtonItem(Icons.Default.DateRange, "Schedule", "Delivery_Schedule") // 📅 New
     )
 
     NavigationActionButton(

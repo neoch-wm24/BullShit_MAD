@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -18,7 +19,8 @@ import com.example.core_ui.components.ScanScreen
 import com.example.main_screen.ui.LoginPage
 import com.example.main_screen.ui.SettingPage
 import com.example.main_screen.ui.ProfilePage
-import com.example.delivery_and_transportation_management.DeliveryAndTransportationNavHost
+import com.example.delivery_and_transportation_management.data.DeliveryViewModel
+import com.example.delivery_and_transportation_management.deliveryAndTransportationNavigation
 import com.example.main_screen.ui.HomePage
 import com.example.main_screen.viewmodel.AuthState
 import com.example.order_management.orderNavigation
@@ -30,6 +32,7 @@ import com.example.main_screen.viewmodel.AuthViewModel as MainScreenAuthViewMode
 @Composable
 fun MyAppNavigation(
     modifier: Modifier = Modifier,
+    deliveryViewModel: DeliveryViewModel = viewModel(),
     authViewModel: MainScreenAuthViewModel
 ) {
     val navController = rememberNavController()
@@ -104,11 +107,7 @@ fun MyAppNavigation(
 
             warehouseNavigation(navController)
 
-            composable("delivery") {
-                DeliveryAndTransportationNavHost(
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            deliveryAndTransportationNavigation(navController, deliveryViewModel)
 
             composable("scan") {
                 ScanScreen(

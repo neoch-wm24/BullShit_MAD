@@ -9,10 +9,10 @@ data class Stop(
 )
 
 data class Delivery(
-    val id: String,
-    val driverName: String,
-    val type: String,   // e.g. Car, Van, Air, Sea
-    val date: String,   // delivery date
+    val id: String = "",
+    val driverName: String = "",
+    val type: String = "",   // e.g. Car, Van, Air, Sea
+    val date: String = "",   // delivery date
     val plateNumber: String? = null, // optional if not all deliveries have vehicles
     val stops: List<Stop> = emptyList() // Add stops property
 )
