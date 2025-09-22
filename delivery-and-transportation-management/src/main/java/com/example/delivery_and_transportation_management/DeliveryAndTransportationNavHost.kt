@@ -26,10 +26,10 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
     // Add new transportation
     composable("AddTransportation") {
         AddTransportationScreen(
-            navController = navController
+            navController = navController,
+            deliveryViewModel = deliveryViewModel // 👈 添加 ViewModel 参数
         )
     }
-
 
 //    // Delivery detail
 //    composable(
@@ -120,16 +120,18 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
         val transportIds = transportIdsString.split(",").toSet()
 
         val deliveries by deliveryViewModel.deliveries.collectAsState()
-        val ordersWithNames by deliveryViewModel.ordersWithCustomerNames.collectAsState() // 👈 改为使用带客户名称的订单
+        val ordersWithNames by deliveryViewModel.ordersWithCustomerNames.collectAsState()
 
         AddTransportToOrderScreen(
             selectedDate = selectedDate,
             selectedTransportIds = transportIds,
             deliveries = deliveries,
-            ordersWithNames = ordersWithNames, // 👈 传入带客户名称的订单
+            ordersWithNames = ordersWithNames,
             navController = navController,
+            deliveryViewModel = deliveryViewModel, // 👈 添加 ViewModel 参数
             onAssignOrders = { selectedOrderIds ->
-                deliveryViewModel.assignOrdersToTransports(transportIds, selectedOrderIds)
+                // 👇 修复：使用正确的交付方法名
+                deliveryViewModel.assignOrdersToDeliveries(transportIds, selectedOrderIds)
                 navController.popBackStack()
             }
         )

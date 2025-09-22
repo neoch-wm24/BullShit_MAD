@@ -151,7 +151,8 @@ fun AddTransportationScreen(
                         type = selectedType,
                         date = "", // 用户可加一个日期选择
                         plateNumber = plateNumber,
-                        stops = emptyList()
+                        stops = emptyList(),
+                        assignedOrders = emptyList()
                     )
                     deliveryViewModel.addDelivery(newDelivery)
                     navController.popBackStack()

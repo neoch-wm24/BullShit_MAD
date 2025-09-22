@@ -34,10 +34,6 @@ class DeliveryViewModel : ViewModel() {
     private val _customers = MutableStateFlow<Map<String, String>>(emptyMap()) // ID -> Name
     val customers: StateFlow<Map<String, String>> = _customers.asStateFlow()
 
-    // 订单分配 Map<TransportId, Set<OrderId>>
-    private val _orderAssignments = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
-    val orderAssignments: StateFlow<Map<String, Set<String>>> = _orderAssignments.asStateFlow()
-
     init {
         // 🔹 首先加载客户数据
         loadCustomers()
@@ -84,23 +80,6 @@ class DeliveryViewModel : ViewModel() {
 
                 // 🔹 更新带客户名称的订单列表
                 updateOrdersWithCustomerNames()
-            }
-
-        // 监听订单分配
-        db.collection("transportAssignments")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("DeliveryViewModel", "Error listening to transport assignments: ${error.message}")
-                    return@addSnapshotListener
-                }
-
-                val assignments = mutableMapOf<String, Set<String>>()
-                snapshot?.documents?.forEach { doc ->
-                    val orderIds = (doc.get("orderIds") as? List<*>)?.mapNotNull { it as? String }?.toSet() ?: emptySet()
-                    assignments[doc.id] = orderIds
-                }
-                _orderAssignments.value = assignments
-                Log.d("DeliveryViewModel", "Loaded transport assignments: ${assignments.size}")
             }
     }
 
@@ -151,52 +130,97 @@ class DeliveryViewModel : ViewModel() {
     }
 
     fun addDelivery(delivery: Delivery) {
+        // ✅ 保存到 Firestore，包括 assignedOrders 字段
         db.collection("deliveries").document(delivery.id).set(delivery)
+            .addOnSuccessListener {
+                Log.d("DeliveryViewModel", "Delivery added successfully: ${delivery.id}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("DeliveryViewModel", "Error adding delivery: ${e.message}")
+            }
     }
 
     fun updateDelivery(updated: Delivery) {
+        // ✅ 保存更新后的 Delivery，包括 date 和 assignedOrders 字段
         db.collection("deliveries").document(updated.id).set(updated)
+            .addOnSuccessListener {
+                Log.d("DeliveryViewModel", "Delivery updated successfully: ${updated.id}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("DeliveryViewModel", "Error updating delivery: ${e.message}")
+            }
     }
 
     fun updateDeliveryDate(deliveryId: String, newDate: String) {
-        _deliveries.value = _deliveries.value.map {
-            if (it.id == deliveryId) it.copy(date = newDate) else it
+        // ✅ 找到对应 delivery 并更新日期，同时保存到 Firestore
+        val currentDeliveries = _deliveries.value
+        val deliveryToUpdate = currentDeliveries.find { it.id == deliveryId }
+
+        if (deliveryToUpdate != null) {
+            val updatedDelivery = deliveryToUpdate.copy(date = newDate)
+            updateDelivery(updatedDelivery)
+        } else {
+            Log.w("DeliveryViewModel", "Delivery not found: $deliveryId")
         }
     }
 
     fun removeDeliveries(toRemove: Set<Delivery>) {
         toRemove.forEach { delivery ->
             db.collection("deliveries").document(delivery.id).delete()
-        }
-        val removedIds = toRemove.map { it.id }.toSet()
-        _orderAssignments.value = _orderAssignments.value.filterKeys { it !in removedIds }
-    }
-
-    fun assignOrdersToTransports(transportIds: Set<String>, orderIds: Set<String>) {
-        val currentAssignments = _orderAssignments.value.toMutableMap()
-
-        transportIds.forEach { transportId ->
-            val existingOrders = currentAssignments[transportId] ?: emptySet()
-            currentAssignments[transportId] = existingOrders + orderIds
-        }
-        _orderAssignments.value = currentAssignments
-
-        // ✅ 同步保存到 Firestore，用 List 而不是 Set
-        transportIds.forEach { transportId ->
-            val list = currentAssignments[transportId]?.toList() ?: emptyList()
-            db.collection("transportAssignments")
-                .document(transportId)
-                .set(mapOf("orderIds" to list))
+                .addOnSuccessListener {
+                    Log.d("DeliveryViewModel", "Delivery removed: ${delivery.id}")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("DeliveryViewModel", "Error removing delivery: ${e.message}")
+                }
         }
     }
 
+    // ✅ 新增：将单个订单分配给某个 delivery
+    fun assignOrderToDelivery(deliveryId: String, orderId: String) {
+        val currentDeliveries = _deliveries.value
+        val deliveryToUpdate = currentDeliveries.find { it.id == deliveryId }
 
-    fun getAssignedOrdersCount(transportId: String): Int {
-        return _orderAssignments.value[transportId]?.size ?: 0
+        if (deliveryToUpdate != null) {
+            val currentAssignedOrders = deliveryToUpdate.assignedOrders.toMutableList()
+            if (!currentAssignedOrders.contains(orderId)) {
+                currentAssignedOrders.add(orderId)
+                val updatedDelivery = deliveryToUpdate.copy(assignedOrders = currentAssignedOrders)
+                updateDelivery(updatedDelivery)
+                Log.d("DeliveryViewModel", "Order $orderId assigned to delivery ${deliveryId}")
+            } else {
+                Log.w("DeliveryViewModel", "Order $orderId already assigned to delivery ${deliveryId}")
+            }
+        } else {
+            Log.w("DeliveryViewModel", "Delivery not found: $deliveryId")
+        }
     }
 
-    fun getAssignedOrderIds(transportId: String): Set<String> {
-        return _orderAssignments.value[transportId] ?: emptySet()
+    // ✅ 新增：将多个订单分配给多个 deliveries（轮询分配）
+    fun assignOrdersToDeliveries(deliveryIds: Set<String>, orderIds: Set<String>) {
+        val deliveryList = deliveryIds.toList()
+        val ordersList = orderIds.toList()
+        val numDeliveries = deliveryList.size
+
+        ordersList.forEachIndexed { index, orderId ->
+            val deliveryId = deliveryList[index % numDeliveries]
+            assignOrderToDelivery(deliveryId, orderId)
+        }
+    }
+
+    // ✅ 更新：从 delivery 内部获取已分配订单数量
+    fun getAssignedOrdersCount(deliveryId: String): Int {
+        return _deliveries.value.find { it.id == deliveryId }?.assignedOrders?.size ?: 0
+    }
+
+    // ✅ 更新：从 delivery 内部获取已分配的订单ID
+    fun getAssignedOrderIds(deliveryId: String): Set<String> {
+        return _deliveries.value.find { it.id == deliveryId }?.assignedOrders?.toSet() ?: emptySet()
+    }
+
+    // 🔹 获取所有已分配的订单ID（用于过滤未分配订单）
+    fun getAllAssignedOrderIds(): Set<String> {
+        return _deliveries.value.flatMap { it.assignedOrders }.toSet()
     }
 
     // 🔹 根据客户ID获取名称

@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
+import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.data.OrderWithCustomerNames
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,14 +22,25 @@ fun AddTransportToOrderScreen(
     selectedDate: String,
     selectedTransportIds: Set<String>,
     deliveries: List<Delivery>,
-    ordersWithNames: List<OrderWithCustomerNames>, // 👈 改为使用带名称的订单
+    ordersWithNames: List<OrderWithCustomerNames>,
     navController: NavController,
-    onAssignOrders: (Set<String>) -> Unit
+    deliveryViewModel: DeliveryViewModel,
+    onAssignOrders: (Set<String>) -> Unit // 👈 保留回调参数
 ) {
     var selectedOrders by rememberSaveable { mutableStateOf(setOf<String>()) }
 
     // 已选的运输工具
     val selectedTransports = deliveries.filter { it.id in selectedTransportIds }
+
+    // 计算所有已分配的订单
+    val allAssignedOrders = remember(deliveries) {
+        deliveries.flatMap { it.assignedOrders }.toSet()
+    }
+
+    // 过滤未分配的订单
+    val filteredOrdersWithNames = ordersWithNames.filter {
+        !allAssignedOrders.contains(it.order.id)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -75,19 +87,19 @@ fun AddTransportToOrderScreen(
             }
         }
 
-        // 列出 orders with names
-        if (ordersWithNames.isEmpty()) {
+        // 列出 filtered orders with names
+        if (filteredOrdersWithNames.isEmpty()) {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "No orders available.",
+                        "No unassigned orders available.",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
         } else {
-            items(ordersWithNames) { orderWithNames ->
+            items(filteredOrdersWithNames) { orderWithNames ->
                 val order = orderWithNames.order
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -163,6 +175,7 @@ fun AddTransportToOrderScreen(
                 Button(
                     onClick = {
                         if (selectedOrders.isNotEmpty()) {
+                            // 👈 使用回调而不是直接调用 ViewModel 方法
                             onAssignOrders(selectedOrders)
                             navController.popBackStack()
                         }
@@ -188,28 +201,3 @@ fun AddTransportToOrderScreen(
         }
     }
 }
-
-//// Preview function for testing
-//@Composable
-//fun PreviewAddTransportToOrderScreen() {
-//    val sampleOrders = listOf(
-//        Order("1", "John Doe", "123 Main St", "Electronics, Books", "High", "Pending"),
-//        Order("2", "Jane Smith", "456 Oak Ave", "Clothing", "Medium", "Pending"),
-//        Order("3", "Bob Johnson", "789 Pine Rd", "Furniture", "Normal", "Pending")
-//    )
-//
-//    val sampleDeliveries = listOf(
-//        com.example.delivery_and_transportation_management.data.Delivery(
-//            "d1", "Driver A", "Van", "2025-09-20", "ABC123"
-//        )
-//    )
-//
-//    AddTransportToOrderScreen(
-//        selectedDate = "2025-09-20",
-//        selectedTransportIds = setOf("d1"),
-//        deliveries = sampleDeliveries,
-//        orders = sampleOrders,
-//        navController = androidx.navigation.compose.rememberNavController(),
-//        onAssignOrders = { }
-//    )
-//}

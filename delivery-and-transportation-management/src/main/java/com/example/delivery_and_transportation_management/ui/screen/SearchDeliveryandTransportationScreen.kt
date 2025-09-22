@@ -172,10 +172,8 @@ fun SearchDeliveryandTransportationScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
-                                        // Show assigned orders summary - use real data from ViewModel
-                                        val assignedOrdersCount by remember(delivery.id) {
-                                            derivedStateOf { deliveryViewModel.getAssignedOrdersCount(delivery.id) }
-                                        }
+                                        // Show assigned orders summary - use real data from Delivery
+                                        val assignedOrdersCount = delivery.assignedOrders.size
 
                                         if (assignedOrdersCount > 0) {
                                             Row(
@@ -231,9 +229,9 @@ fun SearchDeliveryandTransportationScreen(
 fun PreviewSearchDeliveryandTransportationScreen() {
     val navController = rememberNavController()
     val fakeDeliveries = listOf(
-        Delivery("ABC123", "John Doe", "Van", "2025-09-15"),
-        Delivery("XYZ789", "Alice Lee", "Truck", "2025-09-16"),
-        Delivery("LMN456", "Bob Tan", "Bike", "2025-09-17")
+        Delivery(id = "1", plateNumber = "ABC123", driverName = "John Doe", type = "Van", date = "2025-09-15", stops = emptyList(), assignedOrders = emptyList()),
+        Delivery(id = "2", plateNumber = "XYZ789", driverName = "Alice Lee", type = "Truck", date = "2025-09-16", stops = emptyList(), assignedOrders = emptyList()),
+        Delivery(id = "3", plateNumber = "LMN456", driverName = "Bob Tan", type = "Bike", date = "2025-09-17", stops = emptyList(), assignedOrders = emptyList())
     )
     SearchDeliveryandTransportationScreen(
         navController = navController,

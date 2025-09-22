@@ -28,6 +28,9 @@ fun DeliveryScheduleScreen(
     var selectedDate by rememberSaveable { mutableStateOf("") }
     var selectedTransportations by rememberSaveable { mutableStateOf(setOf<String>()) }
 
+    // Filter deliveries with empty assignedOrders
+    val filteredDeliveries = deliveries.filter { it.assignedOrders.isEmpty() }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -90,20 +93,20 @@ fun DeliveryScheduleScreen(
             )
         }
 
-        if (deliveries.isEmpty()) {
+        if (filteredDeliveries.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "⚠No transportation added yet. Go back and add some transportation first.",
+                        "⚠No unassigned transportation available. Go back and add some transportation first.",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
         } else {
-            items(deliveries) { delivery ->
+            items(filteredDeliveries) { delivery ->
                 val plate = delivery.plateNumber?.takeIf { it.isNotBlank() } ?: "(No Plate)"
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -171,7 +174,8 @@ fun DeliveryScheduleScreen(
                             selectedTransportations.forEach { deliveryId ->
                                 deliveryViewModel.updateDeliveryDate(deliveryId, selectedDate)
                             }
-                            // Navigate to order assignment screen instead of going back
+                            // Assume updateDeliveryDate now properly saves to Firebase
+                            // Navigate to order assignment screen
                             navController.navigate("AssignOrders/$selectedDate/${selectedTransportations.joinToString(",")}")
                         }
                     },
