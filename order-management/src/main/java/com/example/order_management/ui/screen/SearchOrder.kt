@@ -20,6 +20,10 @@ import com.example.core_ui.components.SearchBar
 import com.example.core_ui.components.FilterBy
 import com.example.order_management.ui.components.FloatingActionButton
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 // Data class
 data class OrderSummary(
@@ -35,12 +39,31 @@ fun SearchOrderAndParcelScreen(
     navController: NavHostController,
 ) {
     var searchText by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("name (A~Z)") }
+    var selectedFilter by remember { mutableStateOf("Order ID (A~Z)") }
 
     var isMultiSelectMode by remember { mutableStateOf(false) }
     var selectedOrders by remember { mutableStateOf(setOf<OrderSummary>()) }
     val db = FirebaseFirestore.getInstance()
     var orders by remember { mutableStateOf<List<OrderSummary>>(emptyList()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // 管理删除状态
+    var isDeleting by remember { mutableStateOf(false) }
+
+    // 异步获取客户名称的辅助函数
+    suspend fun getCustomerName(db: FirebaseFirestore, customerId: String): String {
+        return try {
+            val querySnapshot = db.collection("customers")
+                .whereEqualTo("id", customerId)
+                .limit(1)
+                .get()
+                .await()
+
+            querySnapshot.documents.firstOrNull()?.getString("name") ?: "Unknown"
+        } catch (e: Exception) {
+            "Unknown"
+        }
+    }
 
     DisposableEffect(Unit) {
         val listener = db.collection("orders")
@@ -58,39 +81,43 @@ fun SearchOrderAndParcelScreen(
                         Triple(id, senderId, receiverId) to parcels
                     }
 
-                    tempOrders.forEach { (ids, parcels) ->
-                        val (id, senderId, receiverId) = ids
+                    // 使用协程来处理异步查询，避免嵌套回调
+                    coroutineScope.launch {
+                        val newOrders = mutableListOf<OrderSummary>()
 
-                        // query sender
-                        db.collection("customers")
-                            .whereEqualTo("id", senderId)
-                            .limit(1)
-                            .get()
-                            .addOnSuccessListener { senderSnap ->
-                                val senderName = senderSnap.documents.firstOrNull()?.getString("name") ?: "Unknown"
+                        tempOrders.forEach { (ids, parcels) ->
+                            val (id, senderId, receiverId) = ids
 
-                                // query receiver
-                                db.collection("customers")
-                                    .whereEqualTo("id", receiverId)
-                                    .limit(1)
-                                    .get()
-                                    .addOnSuccessListener { receiverSnap ->
-                                        val receiverName = receiverSnap.documents.firstOrNull()?.getString("name") ?: "Unknown"
+                            try {
+                                // 查询发送者
+                                val senderName = getCustomerName(db, senderId)
+                                // 查询接收者
+                                val receiverName = getCustomerName(db, receiverId)
 
-                                        // update orders
-                                        orders = orders.toMutableList().apply {
-                                            removeAll { it.id == id }
-                                            add(
-                                                OrderSummary(
-                                                    id = id,
-                                                    senderName = senderName,
-                                                    receiverName = receiverName,
-                                                    parcelCount = parcels
-                                                )
-                                            )
-                                        }
-                                    }
+                                newOrders.add(
+                                    OrderSummary(
+                                        id = id,
+                                        senderName = senderName,
+                                        receiverName = receiverName,
+                                        parcelCount = parcels
+                                    )
+                                )
+                            } catch (exception: Exception) {
+                                println("Error fetching customer data for order $id: ${exception.message}")
+                                // 即使出错也添加订单，使用默认名称
+                                newOrders.add(
+                                    OrderSummary(
+                                        id = id,
+                                        senderName = "Unknown",
+                                        receiverName = "Unknown",
+                                        parcelCount = parcels
+                                    )
+                                )
                             }
+                        }
+
+                        // 原子更新orders状态
+                        orders = newOrders
                     }
                 }
             }
@@ -105,7 +132,7 @@ fun SearchOrderAndParcelScreen(
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp,16.dp, 16.dp, bottom = 25.dp)
+                .padding(16.dp, 16.dp, 16.dp, bottom = 25.dp)
         ) {
             // Search bar
             SearchBar(
@@ -141,7 +168,6 @@ fun SearchOrderAndParcelScreen(
                     )
                 }
             } else {
-
                 val filteredOrders = orders
                     .filter {
                         searchText.isEmpty() || it.id.contains(searchText, ignoreCase = true)
@@ -162,43 +188,54 @@ fun SearchOrderAndParcelScreen(
                     contentPadding = PaddingValues(8.dp, bottom = if (isMultiSelectMode) 60.dp else 8.dp),
                 ) {
                     items(filteredOrders) { order ->
+                        // 检查订单是否正在删除中或已被删除
+                        val isOrderDeleting = isDeleting && selectedOrders.any { it.id == order.id }
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (isMultiSelectMode) {
                                 Checkbox(
-                                    checked = order in selectedOrders,
+                                    checked = order in selectedOrders && !isOrderDeleting,
                                     onCheckedChange = { checked ->
-                                        selectedOrders = if (checked) {
-                                            selectedOrders + order
-                                        } else {
-                                            selectedOrders - order
+                                        if (!isOrderDeleting) {
+                                            selectedOrders = if (checked) {
+                                                selectedOrders + order
+                                            } else {
+                                                selectedOrders - order
+                                            }
                                         }
-                                    }
+                                    },
+                                    enabled = !isOrderDeleting
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                             }
 
-                            OrderListItem(order = order) {
-                                if (isMultiSelectMode) {
-                                    selectedOrders = if (order in selectedOrders) {
-                                        selectedOrders - order
-                                    } else {
-                                        selectedOrders + order
+                            OrderListItem(
+                                order = order,
+                                isDeleting = isOrderDeleting,
+                                onClick = {
+                                    if (!isOrderDeleting) {
+                                        if (isMultiSelectMode) {
+                                            selectedOrders = if (order in selectedOrders) {
+                                                selectedOrders - order
+                                            } else {
+                                                selectedOrders + order
+                                            }
+                                        } else {
+                                            navController.navigate("OrderDetails/${order.id}")
+                                        }
                                     }
-                                } else {
-                                    navController.navigate("OrderDetails/${order.id}")
                                 }
-                            }
+                            )
                         }
                     }
                 }
-
             }
         }
 
-        if (!isMultiSelectMode){
+        if (!isMultiSelectMode) {
             FloatingActionButton(
                 navController = navController,
                 modifier = Modifier
@@ -225,27 +262,79 @@ fun SearchOrderAndParcelScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Selected: ${selectedOrders.size}", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = if (isDeleting) {
+                            "Deleting... ${selectedOrders.size}"
+                        } else {
+                            "Selected: ${selectedOrders.size}"
+                        },
+                        style = MaterialTheme.typography.bodyLarge
+                    )
 
                     Row {
-                        TextButton(onClick = {
-                            selectedOrders = emptySet()
-                            isMultiSelectMode = false
-                        }) {
+                        TextButton(
+                            onClick = {
+                                selectedOrders = emptySet()
+                                isMultiSelectMode = false
+                                isDeleting = false
+                            },
+                            enabled = !isDeleting
+                        ) {
                             Text("Cancel")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
+
+                        // 修复后的删除逻辑部分
                         IconButton(
                             onClick = {
-                                selectedOrders.forEach { order ->
-                                    OrderRepository.deleteOrderWithParcels(order.id)
+                                if (selectedOrders.isNotEmpty() && !isDeleting) {
+                                    coroutineScope.launch {
+                                        // 设置删除状态
+                                        isDeleting = true
+
+                                        try {
+                                            // 批量删除选中的订单
+                                            val ordersToDelete = selectedOrders.toList()
+                                            val deleteIds = ordersToDelete.map { it.id }
+
+                                            // 批量删除Firestore文档
+                                            val batch = db.batch()
+                                            deleteIds.forEach { orderId ->
+                                                val orderDoc = db.collection("orders")
+                                                    .document(orderId)
+                                                batch.delete(orderDoc)
+                                            }
+
+                                            // 执行批量删除
+                                            batch.commit().await()
+
+                                            // 同时调用仓库方法删除相关数据（如果需要）
+                                            ordersToDelete.forEach { order ->
+                                                try {
+                                                    OrderRepository.deleteOrderWithParcels(order.id)
+                                                } catch (e: Exception) {
+                                                    println("Error deleting order ${order.id} from repository: ${e.message}")
+                                                }
+                                            }
+
+                                        } catch (e: Exception) {
+                                            println("Error during batch delete: ${e.message}")
+                                        } finally {
+                                            // 重置状态
+                                            isDeleting = false
+                                            selectedOrders = emptySet()
+                                            isMultiSelectMode = false
+                                        }
+                                    }
                                 }
-                                selectedOrders = emptySet()
-                                isMultiSelectMode = false
                             },
-                            enabled = selectedOrders.isNotEmpty()
+                            enabled = selectedOrders.isNotEmpty() && !isDeleting
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected")
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete Selected",
+                                tint = if (isDeleting) Color.Gray else MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
@@ -255,20 +344,59 @@ fun SearchOrderAndParcelScreen(
 }
 
 @Composable
-fun OrderListItem(order: OrderSummary, onClick: () -> Unit) {
+fun OrderListItem(
+    order: OrderSummary,
+    isDeleting: Boolean = false,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F8F8)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable(enabled = !isDeleting) { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDeleting) {
+                Color(0xFFE0E0E0) // 变灰表示正在删除
+            } else {
+                Color(0xFFF8F8F8)
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDeleting) 0.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text("Order ID: ${order.id}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Order ID: ${order.id}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isDeleting) Color.Gray else MaterialTheme.colorScheme.onSurface
+                )
+
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Sender: ${order.senderName}")
-            Text("Receiver: ${order.receiverName}")
-            Text("Parcels: ${order.parcelCount}")
+            Text(
+                "Sender: ${order.senderName}",
+                color = if (isDeleting) Color.Gray else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Receiver: ${order.receiverName}",
+                color = if (isDeleting) Color.Gray else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Parcels: ${order.parcelCount}",
+                color = if (isDeleting) Color.Gray else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
