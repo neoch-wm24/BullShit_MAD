@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ripple
@@ -50,16 +50,21 @@ data class ActionButtonItem(
 
 // 主要浮动操作按钮组件
 @Composable
-fun FloatingActionButton(navController: NavController, modifier: Modifier = Modifier) {
+fun FloatingActionButton(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    onToggleMultiSelect: (() -> Unit)? = null
+) {
     val actionButtonItemList = listOf(
-        ActionButtonItem(Icons.Default.CheckBox, "Multiple Select", "multiple_select"),
+        ActionButtonItem(Icons.AutoMirrored.Filled.List, "Multiple Select", "multiple_select"),
         ActionButtonItem(Icons.Default.Add, "Add", "AddRack")
     )
 
     NavigationActionButton(
         navController = navController,
         items = actionButtonItemList,
-        modifier = modifier
+        modifier = modifier,
+        onToggleMultiSelect = onToggleMultiSelect
     )
 }
 
@@ -68,7 +73,8 @@ fun FloatingActionButton(navController: NavController, modifier: Modifier = Modi
 fun NavigationActionButton(
     navController: NavController,
     items: List<ActionButtonItem>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleMultiSelect: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -93,16 +99,21 @@ fun NavigationActionButton(
                         item = item,
                         isSelected = isSelected,
                         onClick = {
-                            // 自动导航逻辑 - 统一的导航处理
-                            if (currentDestination?.destination?.route != item.route) {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                            if (item.route == "multiple_select") {
+                                onToggleMultiSelect?.invoke()
+                            } else {
+                                // 自动导航逻辑 - 统一的导航处理
+                                if (currentDestination?.destination?.route != item.route) {
+                                    navController.navigate(item.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             }
+                            expanded = false
                         },
                         modifier = Modifier
                     )

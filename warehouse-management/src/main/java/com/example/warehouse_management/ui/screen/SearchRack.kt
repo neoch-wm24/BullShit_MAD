@@ -6,9 +6,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,9 +28,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.core_data.RackInfo
 import com.example.core_data.RackManager
-import com.example.core_ui.components.SearchBar
 import com.example.core_ui.components.FilterBy
+import com.example.core_ui.components.SearchBar
 import com.example.warehouse_management.ui.components.FloatingActionButton
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +45,11 @@ fun SearchRackScreen(
 
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
+
+    // Multi-select state
+    var isMultiSelectMode by remember { mutableStateOf(false) }
+    var selectedRacks by remember { mutableStateOf(setOf<RackInfo>()) }
+    var isDeleting by remember { mutableStateOf(false) }
 
     val rackList = RackManager.rackList
 
@@ -98,7 +111,8 @@ fun SearchRackScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                contentPadding = PaddingValues(bottom = if (isMultiSelectMode) 60.dp else 0.dp)
             ) {
                 if (filteredRackList.isEmpty()) {
                     item {
@@ -118,46 +132,68 @@ fun SearchRackScreen(
                     }
                 } else {
                     items(filteredRackList) { rack: RackInfo ->
-                        Column(
+                        // Row wrapper to optionally show checkbox
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp, horizontal = 12.dp)
-                                .border(2.dp, Color(0xFFFF69B4)) // ✅ 每个 item 加边框
+                                .border(2.dp, Color(0xFFFF69B4))
                                 .background(Color(0xFFF5F5F5))
                                 .padding(12.dp)
                                 .clickable {
-                                    try {
-                                        if (onNavigateToRackInfo != null) {
-                                            onNavigateToRackInfo(rack.id)
+                                    if (isMultiSelectMode) {
+                                        selectedRacks = if (selectedRacks.contains(rack)) {
+                                            selectedRacks - rack
                                         } else {
-                                            navController.navigate("RackDetails/${rack.id}")
+                                            selectedRacks + rack
                                         }
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("SearchRack", "Navigation failed", e)
+                                    } else {
+                                        try {
+                                            if (onNavigateToRackInfo != null) {
+                                                onNavigateToRackInfo(rack.id)
+                                            } else {
+                                                navController.navigate("RackDetails/${rack.id}")
+                                            }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("SearchRack", "Navigation failed", e)
+                                        }
                                     }
-                                }
+                                },
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "${rack.name}",
-                                fontSize = 20.sp,
-                                color = Color.Black,
-                                modifier = Modifier.padding(bottom = 4.dp)
-                            )
+                            if (isMultiSelectMode) {
+                                Checkbox(
+                                    checked = selectedRacks.contains(rack),
+                                    onCheckedChange = { checked ->
+                                        selectedRacks = if (checked) selectedRacks + rack else selectedRacks - rack
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Layer: ${rack.layer}",
-                                    fontSize = 14.sp,
-                                    color = Color.DarkGray
+                                    text = rack.name,
+                                    fontSize = 20.sp,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(bottom = 4.dp)
                                 )
-                                Text(
-                                    text = "State: ${rack.state}",
-                                    fontSize = 14.sp,
-                                    color = Color.DarkGray
-                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Layer: ${rack.layer}",
+                                        fontSize = 14.sp,
+                                        color = Color.DarkGray
+                                    )
+                                    Text(
+                                        text = "State: ${rack.state}",
+                                        fontSize = 14.sp,
+                                        color = Color.DarkGray
+                                    )
+                                }
                             }
                         }
                     }
@@ -165,12 +201,74 @@ fun SearchRackScreen(
             }
         }
 
-        FloatingActionButton(
-            navController = navController,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        )
+        if (!isMultiSelectMode) {
+            FloatingActionButton(
+                navController = navController,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                onToggleMultiSelect = {
+                    isMultiSelectMode = true
+                    selectedRacks = emptySet()
+                }
+            )
+        }
+
+        if (isMultiSelectMode) {
+            androidx.compose.material3.Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 25.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isDeleting) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(text = if (isDeleting) "Deleting... ${selectedRacks.size}" else "Selected: ${selectedRacks.size}")
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = {
+                            if (!isDeleting) {
+                                selectedRacks = emptySet()
+                                isMultiSelectMode = false
+                            }
+                        }, enabled = !isDeleting) { Text("Cancel") }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = {
+                                if (selectedRacks.isNotEmpty() && !isDeleting) {
+                                    isDeleting = true
+                                    scope.launch {
+                                        // simulate small delay for UX parity
+                                        try {
+                                            val ids = selectedRacks.map { it.id }
+                                            RackManager.removeRacks(ids)
+                                        } finally {
+                                            // reset state
+                                            isDeleting = false
+                                            selectedRacks = emptySet()
+                                            isMultiSelectMode = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = selectedRacks.isNotEmpty() && !isDeleting
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = if (isDeleting) Color.Gray else Color.Black)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

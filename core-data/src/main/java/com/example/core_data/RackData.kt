@@ -23,6 +23,17 @@ object RackManager {
         _rackList.add(rack)
     }
 
+    // 删除单个 Rack
+    fun removeRack(id: String) {
+        _rackList.removeAll { it.id == id }
+    }
+
+    // 批量删除 Rack
+    fun removeRacks(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        _rackList.removeAll { it.id in ids }
+    }
+
     // 获取所有 Rack 名称
     fun getRackNames(): List<String> {
         return _rackList.map { it.name }
