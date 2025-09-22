@@ -88,7 +88,9 @@ fun EditDeliveryScreen(
                 readOnly = true,
                 label = { Text("Driver") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDriver) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .fillMaxWidth()
             )
             ExposedDropdownMenu(
                 expanded = expandedDriver,
@@ -117,7 +119,9 @@ fun EditDeliveryScreen(
                 readOnly = true,
                 label = { Text("Vehicle Type") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                    .fillMaxWidth()
             )
             ExposedDropdownMenu(
                 expanded = expandedType,
@@ -144,7 +148,7 @@ fun EditDeliveryScreen(
                         plateNumber = plateNumber,
                         driverName = selectedDriver,
                         type = selectedType
-                        // date remains unchanged to match AddTransportation layout (no date field)
+                        // date unchanged
                     )
                     onSave(updatedDelivery)
                 }

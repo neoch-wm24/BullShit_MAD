@@ -67,6 +67,7 @@ private fun getTitleByRoute(route: String?): String{
         route == "profile" -> stringResource(id = R.string.profile_pt)
         route == "setting" -> stringResource(id = R.string.setting_pt)
         route == "other" -> stringResource(id = R.string.other_pt)
+        route?.startsWith("routeMap") == true -> stringResource(id = R.string.driver_route_pt)
         else -> "Unknown Page"
     }
 }

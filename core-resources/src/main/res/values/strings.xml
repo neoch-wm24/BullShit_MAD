@@ -34,4 +34,5 @@
     <string name="scan_pt">Scan</string>
 
     <string name="other_pt">Other Page</string>
+    <string name="driver_route_pt">Driver Route</string>
 </resources>
