@@ -2,7 +2,6 @@ package com.example.warehouse_management.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -10,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,15 +54,17 @@ fun RackInformationScreen(
         return
     }
 
-    // ④ 正常显示 - 使用 LazyColumn 包装整个页面
-    val allParcelData = ParcelDataManager.getInStockOrders() // Only get In-Stock orders
+    // ④ 获取该 Rack 下的订单（只取 In-Stock，且 rackId 匹配）
+    val orders: List<AllParcelData> = ParcelDataManager
+        .getInStockOrders()
+        .filter { it.rackId == rackId }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Rack Information Title (moved out of card)
+        // Rack Information Title
         item {
             Text(
                 text = "Rack Information",
@@ -75,13 +75,13 @@ fun RackInformationScreen(
             )
         }
 
-        // Rack Information Card (without title)
+        // Rack Info
         item {
             RackInfoCard(rackInfo = rackInfo)
         }
 
-        // Add parcel information if there are any in-stock parcels
-        if (allParcelData.isNotEmpty()) {
+        // Order List
+        if (orders.isNotEmpty()) {
             item {
                 Text(
                     text = "Order List",
@@ -92,13 +92,14 @@ fun RackInformationScreen(
                 )
             }
 
-            items(allParcelData) { orderData ->
-                OrderListCard(orderData = orderData)
+            items(count = orders.size, key = { index -> orders[index].id }) { index ->
+                val order = orders[index]
+                OrderListCard(orderData = order)
             }
         } else {
             item {
                 Text(
-                    text = "No Orders available",
+                    text = "No Orders available for this Rack",
                     fontSize = 16.sp,
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 20.dp, bottom = 6.dp)
@@ -164,22 +165,22 @@ fun OrderListCard(orderData: AllParcelData) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp), // ✅ 外部间距收紧
+            .padding(vertical = 1.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // ✅ 降低阴影，显得更紧凑
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp) // ✅ 左右多一点，垂直少一点
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             // Order ID
             Text(
                 text = "Order ID: ${orderData.id}",
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold, // ✅ 改 SemiBold，不会太厚
+                fontWeight = FontWeight.SemiBold,
                 color = Color.Black
             )
 
-            Spacer(modifier = Modifier.height(2.dp)) // ✅ 微小间距，避免文字贴太紧
+            Spacer(modifier = Modifier.height(2.dp))
 
             // Date
             Text(

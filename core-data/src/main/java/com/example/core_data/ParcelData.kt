@@ -23,13 +23,15 @@ data class AddressInfo(
     val information: String = "$name, $phone, $addressLine, $city $postalCode, $state"
 )
 
+// Add rackId to associate the order with a specific rack
 data class AllParcelData(
     val id: String,
     val timestamp: Date,
     val sender: AddressInfo,
     val recipient: AddressInfo,
     val parcels: List<ParcelInfo>,
-    val status: String = "In-Stock" // Add status field: "In-Stock", "Out-Stock"
+    val status: String = "In-Stock", // Add status field: "In-Stock", "Out-Stock"
+    val rackId: String = "" // Associated Rack ID; empty means not assigned
 )
 
 // Global state manager for parcel data
@@ -59,6 +61,12 @@ object ParcelDataManager {
         return _allParcelData.filter { it.status == "In-Stock" }
     }
 
+    // New: get orders by rack id (only in-stock)
+    fun getOrdersByRack(rackId: String): List<AllParcelData> {
+        if (rackId.isBlank()) return emptyList()
+        return _allParcelData.filter { it.status == "In-Stock" && it.rackId == rackId }
+    }
+
     fun getOrderById(id: String): AllParcelData? {
         return _allParcelData.find { it.id == id }
     }
@@ -86,7 +94,8 @@ object ParcelDataManager {
         receiverCity: String,
         receiverPostalCode: String,
         receiverState: String,
-        parcels: List<ParcelInfo>
+        parcels: List<ParcelInfo>,
+        rackId: String = ""
     ) {
         val senderInfo = AddressInfo(
             name = senderName,
@@ -112,7 +121,8 @@ object ParcelDataManager {
             sender = senderInfo,
             recipient = receiverInfo,
             parcels = parcels,
-            status = "In-Stock" // Default status when adding new order
+            status = "In-Stock", // Default status when adding new order
+            rackId = rackId
         )
 
         addOrder(orderData)

@@ -127,6 +127,8 @@ fun InStockScreen(
                     state = ""
                 )
 
+                val associatedRackId = RackManager.getRackByName(selectedRack)?.id ?: ""
+
                 val orderData = AllParcelData(
                     id = orderId,
                     sender = senderInfo,
@@ -140,7 +142,8 @@ fun InStockScreen(
                             value = "Unknown"
                         )
                     },
-                    timestamp = Date()
+                    timestamp = Date(),
+                    rackId = associatedRackId
                 )
                 ParcelDataManager.addOrder(orderData)
 
