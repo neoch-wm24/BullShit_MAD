@@ -31,71 +31,52 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
         )
     }
 
-//    // Delivery detail
-//    composable(
-//        "DeliveryDetails/{id}",
-//        arguments = listOf(navArgument("id") { type = NavType.StringType })
-//    ) { backStackEntry ->
-//        val id = backStackEntry.arguments?.getString("id") ?: return@composable
-//        val deliveries by deliveryViewModel.deliveries.collectAsState()
-//        val delivery = deliveries.find { it.id == id }
-//
-//        if (delivery != null) {
-//            val sampleAssignedOrders = when (delivery.id.hashCode() % 4) {
-//                0 -> emptyList()
-//                1 -> listOf(
-//                    Order("ord1", "John Smith", "123 Main St", "Electronics", "High", "Pending"),
-//                    Order("ord2", "Jane Doe", "456 Oak Ave", "Books", "Medium", "Pending")
-//                )
-//                2 -> listOf(
-//                    Order("ord3", "Bob Wilson", "789 Pine Rd", "Furniture", "Normal", "In Progress")
-//                )
-//                else -> listOf(
-//                    Order("ord4", "Alice Brown", "321 Elm St", "Clothing", "High", "Pending"),
-//                    Order("ord5", "Mike Johnson", "654 Cedar Ave", "Sports Equipment", "Medium", "Ready"),
-//                    Order("ord6", "Sarah Davis", "987 Maple Dr", "Home Goods", "Normal", "Pending")
-//                )
-//            }
-//
-//            DeliveryDetail(
-//                delivery = delivery,
-//                navController = navController,
-//                assignedOrders = sampleAssignedOrders,
-//                onEdit = { toEdit ->
-//                    navController.navigate("editDelivery/${toEdit.id}")
-//                },
-//                onDelete = { toDelete ->
-//                    deliveryViewModel.removeDeliveries(setOf(toDelete))
-//                    navController.popBackStack()
-//                }
-//            )
-//        } else {
-//            Text(text = "Delivery not found")
-//        }
-//    }
-//
-//    // Edit delivery
-//    composable(
-//        "Edit_Delivery/{id}",
-//        arguments = listOf(navArgument("id") { type = NavType.StringType })
-//    ) { backStackEntry ->
-//        val id = backStackEntry.arguments?.getString("id") ?: return@composable
-//        val deliveries by deliveryViewModel.deliveries.collectAsState()
-//        val delivery = deliveries.find { it.id == id }
-//
-//        if (delivery != null) {
-//            EditDeliveryScreen(
-//                delivery = delivery,
-//                navController = navController,
-//                onSave = { updated ->
-//                    deliveryViewModel.updateDelivery(updated)
-//                    navController.popBackStack()
-//                }
-//            )
-//        } else {
-//            Text(text = "Delivery not found")
-//        }
-//    }
+    // Delivery detail - navigated from SearchDeliveryandTransportationScreen
+    composable(
+        route = "deliveryDetail/{id}",
+        arguments = listOf(navArgument("id") { type = NavType.StringType })
+    ) { backStackEntry ->
+        val id = backStackEntry.arguments?.getString("id") ?: return@composable
+        val deliveries by deliveryViewModel.deliveries.collectAsState()
+        val delivery = deliveries.find { it.id == id }
+
+        if (delivery != null) {
+            DeliveryDetail(
+                delivery = delivery,
+                navController = navController,
+                onEdit = { toEdit -> navController.navigate("Edit_Delivery/${toEdit.id}") },
+                onDelete = { toDelete ->
+                    deliveryViewModel.removeDeliveries(setOf(toDelete))
+                    navController.popBackStack()
+                }
+            )
+        } else {
+            Text(text = "Delivery not found")
+        }
+    }
+
+    // Edit delivery
+    composable(
+        route = "Edit_Delivery/{id}",
+        arguments = listOf(navArgument("id") { type = NavType.StringType })
+    ) { backStackEntry ->
+        val id = backStackEntry.arguments?.getString("id") ?: return@composable
+        val deliveries by deliveryViewModel.deliveries.collectAsState()
+        val delivery = deliveries.find { it.id == id }
+
+        if (delivery != null) {
+            EditDeliveryScreen(
+                delivery = delivery,
+                navController = navController,
+                onSave = { updated ->
+                    deliveryViewModel.updateDelivery(updated)
+                    navController.popBackStack()
+                }
+            )
+        } else {
+            Text(text = "Delivery not found")
+        }
+    }
 
     // Schedule
     composable("Delivery_Schedule") {

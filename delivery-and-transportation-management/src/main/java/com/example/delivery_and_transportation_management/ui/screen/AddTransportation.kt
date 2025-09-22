@@ -70,8 +70,6 @@ fun AddTransportationScreen(
                         "Plate number must be 1-3 letters followed by 1-4 numbers (e.g., A123, ABC123)",
                         color = MaterialTheme.colorScheme.error
                     )
-                } else {
-                    Text("Format: 1-3 letters + 1-4 numbers")
                 }
             },
             modifier = Modifier.fillMaxWidth()

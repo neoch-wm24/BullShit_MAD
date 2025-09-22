@@ -22,10 +22,11 @@
 
     <string name="delivery_pt">Delivery and Transportation</string>
     <string name="add_transportation_pt">Add Transportation</string>
-    <string name="delivery_details_pt">Rack Details</string>
+    <string name="delivery_details_pt">Delivery Details</string>
     <string name="edit_delivery_pt">Edit Delivery</string>
     <string name="delivery_schedule_pt">Delivery Schedule</string>
     <string name="assign_orders_pt">Assign Orders to Transport</string>
+    <string name="transport_detail_pt">Transport Detail</string>
 
     <string name="profile_pt">Profile</string>
     <string name="setting_pt">Setting</string>
