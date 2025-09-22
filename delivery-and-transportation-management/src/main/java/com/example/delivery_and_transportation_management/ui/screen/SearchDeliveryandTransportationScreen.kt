@@ -48,169 +48,161 @@ fun SearchDeliveryandTransportationScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                SearchBar(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = "Search Deliveries",
-                    placeholder = "plate, driver, type, date, or ID",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        bottomBar = {
-            if (isMultiSelectMode) {
-                Surface(tonalElevation = 3.dp, shadowElevation = 4.dp) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Selected: ${selectedItems.size}", style = MaterialTheme.typography.bodyLarge)
-
-                        Row {
-                            TextButton(onClick = {
-                                selectedItems = emptySet()
-                                isMultiSelectMode = false
-                            }) { Text("Cancel") }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            IconButton(
-                                onClick = {
-                                    deliveryViewModel.removeDeliveries(selectedItems)
-                                    selectedItems = emptySet()
-                                    isMultiSelectMode = false
-                                },
-                                enabled = selectedItems.isNotEmpty()
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete Selected")
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        floatingActionButton = {
-            if (!isMultiSelectMode) {
-                ActionButtonMenu(
-                    navController = navController,
-                    onToggleMultiSelect = {
-                        isMultiSelectMode = true
-                    }
-                )
-            }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            if (filteredDeliveries.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = if (searchQuery.isBlank()) "No deliveries found"
-                        else "No deliveries match your search",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    SearchBar(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = "Search Deliveries",
+                        placeholder = "plate, driver, type, date, or ID",
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(filteredDeliveries) { delivery ->
-                        val plateDisplay = delivery.plateNumber ?: delivery.id
-                        Card(
+            },
+            bottomBar = {
+                if (isMultiSelectMode) {
+                    Surface(tonalElevation = 3.dp, shadowElevation = 4.dp) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    if (isMultiSelectMode) {
-                                        selectedItems = if (delivery in selectedItems)
-                                            selectedItems - delivery
-                                        else
-                                            selectedItems + delivery
-                                    } else {
-                                        navController.navigate("deliveryDetail/${delivery.id}")
-                                    }
-                                },
-                            colors = CardDefaults.cardColors(
-                                containerColor =
-                                    if (isMultiSelectMode && delivery in selectedItems)
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.surface
-                            )
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (isMultiSelectMode) {
-                                    Checkbox(
-                                        checked = delivery in selectedItems,
-                                        onCheckedChange = { checked ->
-                                            selectedItems = if (checked)
-                                                selectedItems + delivery
-                                            else
-                                                selectedItems - delivery
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
+                            Text("Selected: ${selectedItems.size}", style = MaterialTheme.typography.bodyLarge)
+
+                            Row {
+                                TextButton(onClick = {
+                                    selectedItems = emptySet()
+                                    isMultiSelectMode = false
+                                }) { Text("Cancel") }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                IconButton(
+                                    onClick = {
+                                        deliveryViewModel.removeDeliveries(selectedItems)
+                                        selectedItems = emptySet()
+                                        isMultiSelectMode = false
+                                    },
+                                    enabled = selectedItems.isNotEmpty()
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Selected")
                                 }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("Plate: $plateDisplay", style = MaterialTheme.typography.titleMedium)
-                                    Text("Driver: ${delivery.driverName}", style = MaterialTheme.typography.bodyMedium)
-                                    Text("Type: ${delivery.type}", style = MaterialTheme.typography.bodyMedium)
-                                    Text(
-                                        "Date: ${delivery.date.takeIf { it.isNotBlank() } ?: "Not scheduled"}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-
-                                    // Show assigned orders summary - use real data from ViewModel
-                                    val assignedOrdersCount by remember(delivery.id) {
-                                        derivedStateOf { deliveryViewModel.getAssignedOrdersCount(delivery.id) }
+                            }
+                        }
+                    }
+                }
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                if (filteredDeliveries.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = if (searchQuery.isBlank()) "No deliveries found"
+                            else "No deliveries match your search",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredDeliveries) { delivery ->
+                            val plateDisplay = delivery.plateNumber ?: delivery.id
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        if (isMultiSelectMode) {
+                                            selectedItems = if (delivery in selectedItems)
+                                                selectedItems - delivery
+                                            else
+                                                selectedItems + delivery
+                                        } else {
+                                            navController.navigate("deliveryDetail/${delivery.id}")
+                                        }
+                                    },
+                                colors = CardDefaults.cardColors(
+                                    containerColor =
+                                        if (isMultiSelectMode && delivery in selectedItems)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isMultiSelectMode) {
+                                        Checkbox(
+                                            checked = delivery in selectedItems,
+                                            onCheckedChange = { checked ->
+                                                selectedItems = if (checked)
+                                                    selectedItems + delivery
+                                                else
+                                                    selectedItems - delivery
+                                            }
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
                                     }
 
-                                    if (assignedOrdersCount > 0) {
-                                        Row(
-                                            modifier = Modifier.padding(top = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            AssistChip(
-                                                onClick = { },
-                                                label = {
-                                                    Text(
-                                                        "📦 $assignedOrdersCount orders",
-                                                        style = MaterialTheme.typography.labelSmall
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Plate: $plateDisplay", style = MaterialTheme.typography.titleMedium)
+                                        Text("Driver: ${delivery.driverName}", style = MaterialTheme.typography.bodyMedium)
+                                        Text("Type: ${delivery.type}", style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            "Date: ${delivery.date.takeIf { it.isNotBlank() } ?: "Not scheduled"}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        // Show assigned orders summary - use real data from ViewModel
+                                        val assignedOrdersCount by remember(delivery.id) {
+                                            derivedStateOf { deliveryViewModel.getAssignedOrdersCount(delivery.id) }
+                                        }
+
+                                        if (assignedOrdersCount > 0) {
+                                            Row(
+                                                modifier = Modifier.padding(top = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                AssistChip(
+                                                    onClick = { },
+                                                    label = {
+                                                        Text(
+                                                            "📦 $assignedOrdersCount orders",
+                                                            style = MaterialTheme.typography.labelSmall
+                                                        )
+                                                    },
+                                                    colors = AssistChipDefaults.assistChipColors(
+                                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
                                                     )
-                                                },
-                                                colors = AssistChipDefaults.assistChipColors(
-                                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
                                                 )
+                                            }
+                                        } else {
+                                            Text(
+                                                "📦 No orders assigned",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.outline,
+                                                modifier = Modifier.padding(top = 4.dp)
                                             )
                                         }
-                                    } else {
-                                        Text(
-                                            "📦 No orders assigned",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.padding(top = 4.dp)
-                                        )
                                     }
                                 }
                             }
@@ -218,6 +210,18 @@ fun SearchDeliveryandTransportationScreen(
                     }
                 }
             }
+        }
+
+        if (!isMultiSelectMode) {
+            ActionButtonMenu(
+                navController = navController,
+                onToggleMultiSelect = {
+                    isMultiSelectMode = true
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            )
         }
     }
 }

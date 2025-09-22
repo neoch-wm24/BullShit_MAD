@@ -201,7 +201,9 @@ fun SearchOrderAndParcelScreen(
         if (!isMultiSelectMode){
             FloatingActionButton(
                 navController = navController,
-                modifier = Modifier.padding(),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
                 onToggleMultiSelect = {
                     isMultiSelectMode = true
                     selectedOrders = emptySet()
@@ -214,7 +216,7 @@ fun SearchOrderAndParcelScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(8.dp, end = 8.dp,bottom = 25.dp)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 25.dp)
             ) {
                 Row(
                     modifier = Modifier

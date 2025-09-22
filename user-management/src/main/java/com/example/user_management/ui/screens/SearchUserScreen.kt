@@ -93,157 +93,159 @@ fun SearchUserScreen(
         result
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    },
-                    label = { Text("Search Users") },
-                    placeholder = { Text("Search by name, phone or email") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        disabledContainerColor = Color.Transparent
-                    )
-                )
-            }
-        },
-        floatingActionButton = {
-            // 只有在非多选模式下才显示 FAB
-            if (!isMultiSelectMode) {
-                UserManagementFloatingActionButton(
-                    navController = navController,
-                    modifier = Modifier.padding(bottom = 2.dp, end = 2.dp),
-                    onToggleMultiSelect = {
-                        isMultiSelectMode = true
-                        selectedItems = emptySet()
-                    }
-                )
-            }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                FilterBy(
-                    selectedFilter = selectedFilter,
-                    onFilterChange = { selectedFilter = it }
-                )
-
-                if (filteredCustomers.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (searchQuery.isBlank()) "暂无用户，请点击右下角 + 按钮添加"
-                            else "没有找到匹配的用户",
-                            fontSize = 16.sp,
-                            color = Color.Gray
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(filteredCustomers) { customer ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                if (isMultiSelectMode) {
-                                    Checkbox(
-                                        checked = customer in selectedItems,
-                                        onCheckedChange = { checked ->
-                                            selectedItems = if (checked) {
-                                                selectedItems + customer
-                                            } else {
-                                                selectedItems - customer
-                                            }
-                                        }
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                }
-
-                                CustomerListItem(customer = customer) {
-                                    if (isMultiSelectMode) {
-                                        selectedItems = if (customer in selectedItems)
-                                            selectedItems - customer
-                                        else selectedItems + customer
-                                    } else {
-                                        navController.navigate("CustomerDetails/${customer.id}")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 多选工具栏固定在底部
-            if (isMultiSelectMode) {
-                Card(
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp)
-                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Selected: ${selectedItems.size}", style = MaterialTheme.typography.bodyLarge)
-                        Row {
-                            TextButton(onClick = {
-                                selectedItems = emptySet()
-                                isMultiSelectMode = false
-                            }) {
-                                Text("Cancel")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = {
-                                    val db = FirebaseFirestore.getInstance()
-                                    selectedItems.forEach { customer ->
-                                        if (customer.id.isNotBlank()) {
-                                            db.collection("customers")
-                                                .document(customer.id)
-                                                .delete()
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        },
+                        label = { Text("Search Users") },
+                        placeholder = { Text("Search by name, phone or email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent
+                        )
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    FilterBy(
+                        selectedFilter = selectedFilter,
+                        onFilterChange = { selectedFilter = it }
+                    )
+
+                    if (filteredCustomers.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (searchQuery.isBlank()) "暂无用户，请点击右下角 + 按钮添加"
+                                else "没有找到匹配的用户",
+                                fontSize = 16.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(filteredCustomers) { customer ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (isMultiSelectMode) {
+                                        Checkbox(
+                                            checked = customer in selectedItems,
+                                            onCheckedChange = { checked ->
+                                                selectedItems = if (checked) {
+                                                    selectedItems + customer
+                                                } else {
+                                                    selectedItems - customer
+                                                }
+                                            }
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                    }
+
+                                    CustomerListItem(customer = customer) {
+                                        if (isMultiSelectMode) {
+                                            selectedItems = if (customer in selectedItems)
+                                                selectedItems - customer
+                                            else selectedItems + customer
+                                        } else {
+                                            navController.navigate("CustomerDetails/${customer.id}")
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 多选工具栏固定在底部
+                if (isMultiSelectMode) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .align(Alignment.BottomCenter)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Selected: ${selectedItems.size}", style = MaterialTheme.typography.bodyLarge)
+                            Row {
+                                TextButton(onClick = {
                                     selectedItems = emptySet()
                                     isMultiSelectMode = false
-                                },
-                                enabled = selectedItems.isNotEmpty()
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete Selected")
+                                }) {
+                                    Text("Cancel")
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        val db = FirebaseFirestore.getInstance()
+                                        selectedItems.forEach { customer ->
+                                            if (customer.id.isNotBlank()) {
+                                                db.collection("customers")
+                                                    .document(customer.id)
+                                                    .delete()
+                                            }
+                                        }
+                                        selectedItems = emptySet()
+                                        isMultiSelectMode = false
+                                    },
+                                    enabled = selectedItems.isNotEmpty()
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Selected")
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+
+        // FloatingActionButton positioned like SearchRack.kt
+        if (!isMultiSelectMode) {
+            UserManagementFloatingActionButton(
+                navController = navController,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                onToggleMultiSelect = {
+                    isMultiSelectMode = true
+                    selectedItems = emptySet()
+                }
+            )
         }
     }
 }
