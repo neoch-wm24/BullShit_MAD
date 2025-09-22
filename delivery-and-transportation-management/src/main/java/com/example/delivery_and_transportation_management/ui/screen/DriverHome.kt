@@ -58,8 +58,11 @@ fun DriverHome(
     var selectedStop by remember { mutableStateOf<Stop?>(null) }
 
     val currentDeliveries = actualDeliveries.filter { it.date == selectedDate }
-    val completedCount = currentDeliveries.count { it.plateNumber != null }
-    val incompleteCount = currentDeliveries.size - completedCount
+    // Fallback to demo for today if backend has no matching entries for this driver/date
+    val uiDeliveries = if (currentDeliveries.isNotEmpty()) currentDeliveries else if (selectedDate == today) demoDeliveries else emptyList()
+
+    val completedCount = uiDeliveries.count { it.plateNumber != null }
+    val incompleteCount = uiDeliveries.size - completedCount
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -72,7 +75,7 @@ fun DriverHome(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StatCard("Today's Tasks", currentDeliveries.size, Modifier.weight(1f))
+                StatCard("Today's Tasks", uiDeliveries.size, Modifier.weight(1f))
                 StatCard("Completed", completedCount, Modifier.weight(1f))
                 StatCard("Incomplete", incompleteCount, Modifier.weight(1f))
             }
@@ -104,17 +107,18 @@ fun DriverHome(
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {
-                items(currentDeliveries) { delivery ->
+                items(uiDeliveries) { delivery ->
                     DeliveryCard(delivery) {
                         if (delivery.stops.isNotEmpty()) {
-                            selectedStop = delivery.stops.first() // 默认点第一个
+                            selectedStop = delivery.stops.first()
+                            showRoute = true // enable embedded route preview
                         }
                     }
                 }
             }
 
-// ===== 当天才有按钮 =====
-            if (selectedDate == today && currentDeliveries.isNotEmpty()) {
+            // ===== 当天才有按钮 =====
+            if (selectedDate == today && uiDeliveries.isNotEmpty()) {
                 Button(
                     onClick = {
                         navController.navigate("routeMap/$employeeID")
@@ -127,11 +131,11 @@ fun DriverHome(
             }
 
             // ===== 内嵌路线展示 =====
-            if (showRoute && currentDeliveries.isNotEmpty()) {
+            if (showRoute && uiDeliveries.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Today's Route", style = MaterialTheme.typography.titleLarge)
 
-                val stops = currentDeliveries.flatMap { it.stops }
+                val stops = uiDeliveries.flatMap { it.stops }
                 if (stops.isNotEmpty()) {
                     val cameraPositionState = rememberCameraPositionState {
                         position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(stops.first().location, 12f)
@@ -157,7 +161,7 @@ fun DriverHome(
                         if (stops.size > 1) {
                             Polyline(
                                 points = stops.map { it.location },
-                                color = Color.Blue, // ✅ 改成这样
+                                color = Color.Blue,
                                 width = 8f
                             )
                         }

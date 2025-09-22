@@ -117,4 +117,18 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
             }
         )
     }
+
+    // Driver route map
+    composable(
+        route = "routeMap/{driverId}",
+        arguments = listOf(navArgument("driverId") { type = NavType.StringType })
+    ) { backStackEntry ->
+        val driverId = backStackEntry.arguments?.getString("driverId") ?: return@composable
+        val deliveries by deliveryViewModel.deliveries.collectAsState()
+        val stops = deliveries.filter { it.id == driverId }.flatMap { it.stops }
+        DriverDeliveryListScreen(
+            stops = stops,
+            onCheckout = { navController.popBackStack() }
+        )
+    }
 }
