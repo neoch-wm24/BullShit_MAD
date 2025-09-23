@@ -9,10 +9,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.core_ui.components.BottomBar
 import com.example.core_ui.components.TopBar
 import com.example.core_ui.components.ScanScreen
@@ -48,7 +50,15 @@ fun MyAppNavigation(
         },
         bottomBar = {
             if (currentRoute != "login") {
-                BottomBar(navController = navController)
+                val authState by authViewModel.authState.observeAsState()
+                if (authState is AuthState.Authenticated) {
+                    val state = authState as AuthState.Authenticated
+                    BottomBar(
+                        navController = navController,
+                        role = state.role,
+                        employeeID = state.employeeID
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -64,28 +74,25 @@ fun MyAppNavigation(
                     authViewModel = authViewModel
                 )
             }
-            composable("home") {
-                val authState = authViewModel.authState.observeAsState()
 
-                when (val state = authState.value) {
-                    is AuthState.Authenticated -> {
-                        HomePage(
-                            navController = navController,
-                            role = state.role,
-                            employeeID = state.employeeID
-                        )
-                    }
-                    is AuthState.Loading -> {
-                        androidx.compose.material3.Text("Loading...")
-                    }
-                    is AuthState.Error -> {
-                        androidx.compose.material3.Text("Error: ${state.message}")
-                    }
-                    else -> {
-                        androidx.compose.material3.Text("Not authenticated")
-                    }
-                }
+            // ✅ 修改 home route，支持参数 role + employeeID
+            composable(
+                route = "home/{role}/{employeeID}",
+                arguments = listOf(
+                    navArgument("role") { type = NavType.StringType },
+                    navArgument("employeeID") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val role = backStackEntry.arguments?.getString("role") ?: "employee"
+                val employeeID = backStackEntry.arguments?.getString("employeeID") ?: ""
+
+                HomePage(
+                    navController = navController,
+                    role = role,
+                    employeeID = employeeID
+                )
             }
+
             composable("profile") {
                 ProfilePage(
                     modifier = Modifier.fillMaxSize(),
@@ -115,7 +122,6 @@ fun MyAppNavigation(
                     modifier = Modifier.padding(innerPadding)
                 )
             }
-
         }
     }
 }

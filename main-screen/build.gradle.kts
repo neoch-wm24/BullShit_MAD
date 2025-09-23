@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.lottie.compose)
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
 
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))

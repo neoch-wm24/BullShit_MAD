@@ -64,9 +64,14 @@ data class NavigationItem(
 )
 
 @Composable
-fun BottomBar(navController: NavController, modifier: Modifier = Modifier){
+fun BottomBar(
+    navController: NavController,
+    role: String,
+    employeeID: String,
+    modifier: Modifier = Modifier
+) {
     val navigationItemList = listOf(
-        NavigationItem("Home", Icons.Default.Home, "home"),
+        NavigationItem("Home", Icons.Default.Home, "home/$role/$employeeID"),
         NavigationItem("Scan", Icons.Default.QrCodeScanner, "scan", isSpecial = true),
         NavigationItem("Profile", Icons.Default.Person, "profile"),
     )
@@ -77,6 +82,7 @@ fun BottomBar(navController: NavController, modifier: Modifier = Modifier){
         modifier = modifier
     )
 }
+
 
 @Composable
 fun NavigationBar(
@@ -105,16 +111,26 @@ fun NavigationBar(
                 val currentDestination by navController.currentBackStackEntryAsState()
 
                 items.forEach { item ->
-                    val isSelected = currentDestination?.destination?.route == item.route
-                    if (!item.isSpecial){
+                    val currentRoute = currentDestination?.destination?.route
+
+                    // ✅ 支持 home/{role}/{employeeID} 的高亮逻辑
+                    val isSelected = when {
+                        item.route.startsWith("home") -> currentRoute?.startsWith("home") == true
+                        else -> currentRoute == item.route
+                    }
+
+                    if (!item.isSpecial) {
                         NavigationButton(
                             item = item,
                             isSelected = isSelected,
                             onClick = {
-                                val currentRoute = currentDestination?.destination?.route
+                                val shouldNavigate = when {
+                                    // ✅ 如果是 Home，检查当前是否已经在 home 前缀下
+                                    item.route.startsWith("home") -> currentRoute?.startsWith("home") != true
+                                    else -> currentRoute != item.route
+                                }
 
-                                if (currentRoute != item.route) {
-                                    // 智能导航策略
+                                if (shouldNavigate) {
                                     navigateToBottomNavDestination(
                                         navController = navController,
                                         targetRoute = item.route,
@@ -124,10 +140,12 @@ fun NavigationBar(
                             },
                             modifier = Modifier.weight(1f)
                         )
-                    }else{
+                    } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
+
+
             }
         }
 
@@ -245,33 +263,13 @@ private fun navigateToBottomNavDestination(
     targetRoute: String,
     currentRoute: String?
 ) {
-    // 定义底部导航的主要页面
-    val bottomNavRoutes = setOf("home", "profile", "scan")
-
-    // 定义 home 相关的子页面
-    val homeRelatedRoutes = setOf("order", "rack", "search", "add", "multiple_select")
+    val bottomNavPrefixes = listOf("home", "profile", "scan")
 
     when {
-        // 情况1: 目标是 home，且当前在 home 相关页面
-        targetRoute == "home" && (currentRoute in homeRelatedRoutes || currentRoute == "home") -> {
-            // 直接返回到 home，不创建新实例
-            navController.popBackStack("home", inclusive = false)
-        }
-
-        // 情况2: 目标是 home，但当前在其他底部导航页面
-        targetRoute == "home" && currentRoute in bottomNavRoutes -> {
-            navController.navigate("home") {
-                popUpTo("home") {
-                    inclusive = true
-                }
-                launchSingleTop = true
-            }
-        }
-
-        // 情况3: 在底部导航页面之间切换
-        targetRoute in bottomNavRoutes && currentRoute in bottomNavRoutes -> {
+        // ✅ 特殊处理 home，支持参数
+        targetRoute.startsWith("home") -> {
             navController.navigate(targetRoute) {
-                popUpTo("home") {
+                popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
                 }
                 launchSingleTop = true
@@ -279,41 +277,30 @@ private fun navigateToBottomNavDestination(
             }
         }
 
-        // 情况4: 从子页面导航到其他底部导航页面
-        targetRoute in bottomNavRoutes && currentRoute in homeRelatedRoutes -> {
+        // ✅ 安全处理 currentRoute 为 null 的情况
+        targetRoute.matchesPrefix(bottomNavPrefixes) &&
+                (currentRoute?.matchesPrefix(bottomNavPrefixes) == true) -> {
             navController.navigate(targetRoute) {
-                popUpTo("home")
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
                 launchSingleTop = true
                 restoreState = true
             }
         }
 
-        // 情况5: 默认情况
         else -> {
             navController.navigate(targetRoute) {
-                popUpTo("home")
+                popUpTo(navController.graph.findStartDestination().id)
                 launchSingleTop = true
             }
         }
     }
 }
 
-@Preview(showBackground = false, showSystemUi = true)
-@Composable
-private fun BottomBarFullScreenPreview() {
-    val navController = rememberNavController()
-    LogisticManagementApplicationTheme {
-        Scaffold(
-            bottomBar = {
-                BottomBar(navController = navController)
-            }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background)
-            )
-        }
-    }
+
+private fun String?.matchesPrefix(prefixes: List<String>): Boolean {
+    return this != null && prefixes.any { this.startsWith(it) }
 }
+
+

@@ -38,7 +38,7 @@ import com.example.core_ui.theme.LogisticManagementApplicationTheme
 @Composable
 private fun getTitleByRoute(route: String?): String{
     return when {
-        route == "home" -> stringResource(id = R.string.home_pt)
+        route?.startsWith("home") == true -> stringResource(id = R.string.home_pt)
         route == "report" -> stringResource(id = R.string.report_pt)
 
         route == "user" -> stringResource(id = R.string.user_pt)
@@ -80,7 +80,11 @@ fun TopBar(
     val currentRoute = currentBackStackEntry?.destination?.route
 
     val title = getTitleByRoute(currentRoute)
-    val showBackButton = currentRoute !in listOf("home", "profile")
+    val showBackButton = when {
+        currentRoute?.startsWith("home") == true -> false
+        currentRoute?.startsWith("profile") == true -> false
+        else -> true
+    }
 
     Surface(
         modifier = modifier

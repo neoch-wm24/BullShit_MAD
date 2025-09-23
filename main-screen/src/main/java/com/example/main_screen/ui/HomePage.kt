@@ -20,6 +20,7 @@ import androidx.navigation.NavController
 import com.example.core_ui.components.Dashboard
 import com.example.core_ui.components.DashboardItem
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.delivery_and_transportation_management.ui.screen.DriverHome
 
 @Composable
 fun HomePage(navController: NavController, role: String, employeeID: String? = null) {
@@ -28,7 +29,16 @@ fun HomePage(navController: NavController, role: String, employeeID: String? = n
             AdminHomeScreen(navController)
         }
         "driver" -> {
-
+            // ✅ 传入 NavController 和 employeeID
+            if (employeeID != null) {
+                DriverHome(
+                    navController = navController,
+                    employeeID = employeeID
+                )
+            } else {
+                // 如果 employeeID 为空，fallback 到普通员工界面
+                EmployeeHomeScreen(navController)
+            }
         }
         else -> {
             EmployeeHomeScreen(navController)

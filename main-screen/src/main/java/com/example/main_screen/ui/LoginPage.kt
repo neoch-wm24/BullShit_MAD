@@ -56,7 +56,9 @@ fun LoginPage(
     LaunchedEffect(authState.value) {
         when (val state = authState.value) {
             is AuthState.Authenticated -> {
-                navController.navigate("home") {
+                val role = state.role
+                val id = state.employeeID
+                navController.navigate("home/$role/$id") {
                     popUpTo("login") { inclusive = true }
                 }
             }
@@ -66,6 +68,7 @@ fun LoginPage(
             else -> Unit
         }
     }
+
 
     // 标题渐入
     val titleAlpha by animateFloatAsState(
