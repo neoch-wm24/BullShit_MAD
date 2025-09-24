@@ -75,7 +75,7 @@ fun MyAppNavigation(
                 )
             }
 
-            // ✅ 修改 home route，支持参数 role + employeeID
+            // ✅ 参数化的 home route
             composable(
                 route = "home/{role}/{employeeID}",
                 arguments = listOf(
@@ -86,6 +86,20 @@ fun MyAppNavigation(
                 val role = backStackEntry.arguments?.getString("role") ?: "employee"
                 val employeeID = backStackEntry.arguments?.getString("employeeID") ?: ""
 
+                HomePage(
+                    navController = navController,
+                    role = role,
+                    employeeID = employeeID
+                )
+            }
+
+            // ✅ 新增无参的 'home' 别名，便于功能模块直接导航
+            composable("home") {
+                val authState by authViewModel.authState.observeAsState()
+                val (role, employeeID) = when (val state = authState) {
+                    is AuthState.Authenticated -> state.role to state.employeeID
+                    else -> "employee" to ""
+                }
                 HomePage(
                     navController = navController,
                     role = role,

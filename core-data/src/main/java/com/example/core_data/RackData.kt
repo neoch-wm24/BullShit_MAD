@@ -1,64 +1,59 @@
 package com.example.core_data
 
 import androidx.compose.runtime.mutableStateListOf
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.tasks.await
 
-// 数据类来存储Rack信息
 data class RackInfo(
-    val id: String, // 添加唯一标识符
-    val name: String,
-    val layer: Int,
-    val state: String = "Idle" // Default state is Idle
+    val id: String = "",
+    val name: String = "",
+    val layer: Int = 0,
+    val state: String = "Idle"
 )
 
-// 全局状态来存储Rack列表
 object RackManager {
+    private val db = FirebaseFirestore.getInstance()
     private val _rackList = mutableStateListOf<RackInfo>()
     val rackList: List<RackInfo> get() = _rackList.toList()
 
-    // 当前选中的 Rack（入库时设置，出库后清除）
     private var currentRack: String = ""
+    private var listener: ListenerRegistration? = null
 
-    // 添加 Rack
-    fun addRack(rack: RackInfo) {
-        _rackList.add(rack)
+    init {
+        // Firestore 实时监听 racks 集合
+        listener = db.collection("racks")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    _rackList.clear()
+                    _rackList.addAll(snapshot.toObjects(RackInfo::class.java))
+                }
+            }
     }
 
-    // 删除单个 Rack
-    fun removeRack(id: String) {
-        _rackList.removeAll { it.id == id }
+    suspend fun addRack(rack: RackInfo) {
+        db.collection("racks").document(rack.id).set(rack).await()
     }
 
-    // 批量删除 Rack
-    fun removeRacks(ids: Collection<String>) {
-        if (ids.isEmpty()) return
-        _rackList.removeAll { it.id in ids }
+    suspend fun removeRack(id: String) {
+        db.collection("racks").document(id).delete().await()
     }
 
-    // 获取所有 Rack 名称
     fun getRackNames(): List<String> {
         return _rackList.map { it.name }
     }
 
-    // 通过名称获取 Rack
-    fun getRackByName(name: String): RackInfo? {
-        val target = name.trim().lowercase()
-        return _rackList.find { it.name.trim().lowercase() == target }
-    }
-
-    // 通过ID获取 Rack
     fun getRackById(id: String): RackInfo? {
         return _rackList.find { it.id == id }
     }
 
-    // 设置当前 Rack
     fun setCurrentRack(rack: String) {
         currentRack = rack
     }
 
-    // 获取当前 Rack
     fun getCurrentRack(): String = currentRack
 
-    // 清除当前 Rack
     fun clearCurrentRack() {
         currentRack = ""
     }

@@ -9,6 +9,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.core_data.RackManager
 import com.example.core_data.ParcelDataManager
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun OutStockScreen(
@@ -20,12 +22,17 @@ fun OutStockScreen(
     modifier: Modifier = Modifier,
     navController: NavHostController? = null
 ) {
-    val currentRack = RackManager.getCurrentRack()
+    val scope = rememberCoroutineScope()
+
+    // 🔑 通过 orderId 找订单
+    val order = ParcelDataManager.getOrderById(orderId)
+    val rackInfo = order?.rackId?.let { rackId ->
+        RackManager.getRackById(rackId)
+    }
 
     Column(
         modifier = modifier.fillMaxSize().padding(16.dp)
     ) {
-        // ---------- 扫描信息 Card ----------
         Card(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -38,7 +45,6 @@ fun OutStockScreen(
             }
         }
 
-        // ---------- Current Rack ----------
         Text(
             text = "Current Rack",
             style = MaterialTheme.typography.titleMedium,
@@ -52,24 +58,23 @@ fun OutStockScreen(
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text(
-                    if (currentRack.isNotEmpty()) currentRack else "No rack info available"
+                    rackInfo?.name ?: "No rack info available"
                 )
             }
         }
 
         Spacer(Modifier.height(24.dp))
 
-        // ---------- Outstock 按钮 ----------
         Button(
             onClick = {
-                // 出库逻辑：清除 rack & 更新订单状态为 "Out-Stock"
-                RackManager.clearCurrentRack()
-                ParcelDataManager.updateOrderStatus(orderId, "Out-Stock")
-
-                navController?.popBackStack()
+                scope.launch {
+                    // ✅ 更新订单状态即可，不用依赖 RackManager.currentRack
+                    ParcelDataManager.updateOrderStatus(orderId, "Out-Stock")
+                    navController?.popBackStack()
+                }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = currentRack.isNotEmpty(),
+            enabled = rackInfo != null, // ✅ 只有有 rackInfo 时才允许出库
             shape = MaterialTheme.shapes.medium
         ) {
             Text("Outstock", color = Color.Black)

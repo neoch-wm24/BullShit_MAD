@@ -30,8 +30,6 @@ fun AddRackScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val db = FirebaseFirestore.getInstance()
-
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -67,18 +65,15 @@ fun AddRackScreen(
                     scope.launch {
                         try {
                             val rackId = UUID.randomUUID().toString()
-                            val newRack = mapOf(
-                                "rakID" to rackId,
-                                "name" to newRackName.trim(),
-                                "layer" to selectedLayer,
-                                "status" to selectedState
+                            val newRack = RackInfo(
+                                id = rackId,
+                                name = newRackName.trim(),
+                                layer = selectedLayer,
+                                state = selectedState
                             )
 
-                            // ✅ Firestore 添加
-                            db.collection("raks")
-                                .document(rackId) // 以 rackId 作为 doc ID
-                                .set(newRack)
-                                .await()
+                            // ✅ 调用 RackManager 保存到 Firestore
+                            RackManager.addRack(newRack)
 
                             snackbarHostState.showSnackbar("Rack added successfully!")
                             kotlinx.coroutines.delay(100)
@@ -101,7 +96,6 @@ fun AddRackScreen(
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
