@@ -50,7 +50,7 @@ fun SearchRackScreen(
     var rackList by remember { mutableStateOf(listOf<RackInfo>()) }
     var listenerRegistration by remember { mutableStateOf<ListenerRegistration?>(null) }
 
-    // 监听 Firestore collection raks
+    // Firestore 实时监听 raks
     LaunchedEffect(Unit) {
         listenerRegistration = db.collection("raks")
             .addSnapshotListener { snapshot, error ->
@@ -74,9 +74,7 @@ fun SearchRackScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose {
-            listenerRegistration?.remove()
-        }
+        onDispose { listenerRegistration?.remove() }
     }
 
     // 过滤 & 排序
@@ -91,7 +89,6 @@ fun SearchRackScreen(
             "Non-Idle Rack" -> result.filter { !it.state.equals("Idle", ignoreCase = true) }
             else -> result
         }
-
         result
     }
 
@@ -219,7 +216,7 @@ fun SearchRackScreen(
 
         // Multi-select bottom card
         if (isMultiSelectMode) {
-            androidx.compose.material3.Card(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
@@ -255,9 +252,10 @@ fun SearchRackScreen(
                                         try {
                                             val batch = db.batch()
                                             selectedRacks.forEach { rack ->
-                                                batch.delete(db.collection("raks").document(rack.id))
+                                                val docRef = db.collection("raks").document(rack.id)
+                                                batch.delete(docRef)
                                             }
-                                            batch.commit().await()
+                                            batch.commit().await() // Firestore 批量删除
                                         } catch (e: Exception) {
                                             println("Delete failed: ${e.message}")
                                         } finally {
@@ -270,7 +268,11 @@ fun SearchRackScreen(
                             },
                             enabled = selectedRacks.isNotEmpty() && !isDeleting
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = if (isDeleting) Color.Gray else Color.Black)
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Selected",
+                                tint = if (isDeleting) Color.Gray else Color.Black
+                            )
                         }
                     }
                 }

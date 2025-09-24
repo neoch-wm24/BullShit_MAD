@@ -81,7 +81,7 @@ fun AddRackScreen(
                                 .await()
 
                             snackbarHostState.showSnackbar("Rack added successfully!")
-                            kotlinx.coroutines.delay(200)
+                            kotlinx.coroutines.delay(100)
                             try {
                                 navController.navigate("searchrack") {
                                     popUpTo("searchrack") { inclusive = true }
