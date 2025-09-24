@@ -15,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.core_data.*
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +30,8 @@ fun AddRackScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val db = FirebaseFirestore.getInstance()
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -37,7 +41,7 @@ fun AddRackScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.Top  // 👈 普通排列
+            verticalArrangement = Arrangement.Top
         ) {
             RackInputForm(
                 rackName = newRackName,
@@ -49,7 +53,7 @@ fun AddRackScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp)) // 👈 表单和按钮间距
+            Spacer(modifier = Modifier.height(24.dp))
 
             AddButton(
                 onAddClick = {
@@ -60,18 +64,24 @@ fun AddRackScreen(
                         return@AddButton
                     }
 
-                    try {
-                        val newRack = RackInfo(
-                            id = UUID.randomUUID().toString(),
-                            name = newRackName.trim(),
-                            layer = selectedLayer,
-                            state = selectedState
-                        )
-                        RackManager.addRack(newRack)
+                    scope.launch {
+                        try {
+                            val rackId = UUID.randomUUID().toString()
+                            val newRack = mapOf(
+                                "rakID" to rackId,
+                                "name" to newRackName.trim(),
+                                "layer" to selectedLayer,
+                                "status" to selectedState
+                            )
 
-                        scope.launch {
+                            // ✅ Firestore 添加
+                            db.collection("raks")
+                                .document(rackId) // 以 rackId 作为 doc ID
+                                .set(newRack)
+                                .await()
+
                             snackbarHostState.showSnackbar("Rack added successfully!")
-                            kotlinx.coroutines.delay(500)
+                            kotlinx.coroutines.delay(200)
                             try {
                                 navController.navigate("searchrack") {
                                     popUpTo("searchrack") { inclusive = true }
@@ -80,12 +90,10 @@ fun AddRackScreen(
                                 println("Navigation error after adding rack: ${navError.message}")
                                 navController.popBackStack()
                             }
-                        }
-                    } catch (e: Exception) {
-                        scope.launch {
+                        } catch (e: Exception) {
                             snackbarHostState.showSnackbar("Error adding Rack: ${e.message}")
+                            println("Error adding Rack: ${e.message}")
                         }
-                        println("Error adding Rack: ${e.message}")
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -93,6 +101,7 @@ fun AddRackScreen(
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

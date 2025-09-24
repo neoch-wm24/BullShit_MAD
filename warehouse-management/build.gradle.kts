@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)      // Android 核心库，提供了对 Android API 的 Kotlin 扩展支持
     implementation(libs.androidx.appcompat)     // 提供对旧版 Android 设备的兼容支持
     implementation(libs.material)               // Google 的 Material Design 组件库
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore.ktx)
 
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))       // 使用 Compose 的 BOM（Bill of Materials）来管理 Compose 相关库的版本
     implementation("androidx.compose.ui:ui")                                            // Jetpack Compose 的核心 UI 库
