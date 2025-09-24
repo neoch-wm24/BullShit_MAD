@@ -1,67 +1,90 @@
 package com.example.core_data
 
 import androidx.compose.runtime.mutableStateListOf
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.tasks.await
 import java.util.Date
 
-// Data classes for parcel management
 data class ParcelInfo(
-    val id: String,
-    val description: String,
-    val weight: String,
-    val dimensions: String,
-    val value: String,
+    val id: String = "",
+    val description: String = "",
+    val weight: String = "",
+    val dimensions: String = "",
+    val value: String = "",
     val information: String = "$description - Weight: $weight, Size: $dimensions, Value: $value"
 )
 
 data class AddressInfo(
-    val name: String,
-    val phone: String,
-    val addressLine: String,
-    val city: String,
-    val postalCode: String,
-    val state: String,
+    val name: String = "",
+    val phone: String = "",
+    val addressLine: String = "",
+    val city: String = "",
+    val postalCode: String = "",
+    val state: String = "",
     val information: String = "$name, $phone, $addressLine, $city $postalCode, $state"
 )
 
-// Add rackId to associate the order with a specific rack
 data class AllParcelData(
-    val id: String,
-    val timestamp: Date,
-    val sender: AddressInfo,
-    val recipient: AddressInfo,
-    val parcels: List<ParcelInfo>,
-    val status: String = "In-Stock", // Add status field: "In-Stock", "Out-Stock"
-    val rackId: String = "" // Associated Rack ID; empty means not assigned
+    val id: String = "",
+    val timestamp: Date = Date(),
+    val sender: AddressInfo = AddressInfo(),
+    val recipient: AddressInfo = AddressInfo(),
+    val parcels: List<ParcelInfo> = emptyList(),
+    val status: String = "In-Stock",
+    val rackId: String = ""
 )
 
-// Global state manager for parcel data
 object ParcelDataManager {
+    private val db = FirebaseFirestore.getInstance()
     private val _allParcelData = mutableStateListOf<AllParcelData>()
     val allParcelData: List<AllParcelData> get() = _allParcelData.toList()
 
-    fun addOrder(orderData: AllParcelData) {
-        _allParcelData.add(orderData)
+    private var listener: ListenerRegistration? = null
+
+    init {
+        // Firestore 实时监听 orders 集合
+        listener = db.collection("orders")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) return@addSnapshotListener
+                if (snapshot != null) {
+                    _allParcelData.clear()
+                    _allParcelData.addAll(snapshot.toObjects(AllParcelData::class.java))
+                }
+            }
     }
 
-    fun removeOrder(orderId: String) {
-        _allParcelData.removeAll { it.id == orderId }
+    suspend fun addOrder(orderData: AllParcelData) {
+        val col = db.collection("orders")
+        val useAutoId = orderData.id.isBlank() || orderData.id.contains('/')
+        val docRef = if (useAutoId) col.document() else col.document(orderData.id)
+        docRef.set(orderData).await()
     }
 
-    // New method to update order status instead of removing
-    fun updateOrderStatus(orderId: String, newStatus: String) {
-        val index = _allParcelData.indexOfFirst { it.id == orderId }
-        if (index != -1) {
-            val currentOrder = _allParcelData[index]
-            _allParcelData[index] = currentOrder.copy(status = newStatus)
+    suspend fun removeOrder(orderId: String) {
+        val col = db.collection("orders")
+        if (orderId.isBlank() || orderId.contains('/')) {
+            val snapshot = col.whereEqualTo("id", orderId).get().await()
+            snapshot.documents.forEach { it.reference.delete().await() }
+        } else {
+            col.document(orderId).delete().await()
         }
     }
 
-    // Get only in-stock orders for display in RackInformation
+    suspend fun updateOrderStatus(orderId: String, newStatus: String) {
+        val col = db.collection("orders")
+        if (orderId.isBlank() || orderId.contains('/')) {
+            val snapshot = col.whereEqualTo("id", orderId).get().await()
+            snapshot.documents.forEach { it.reference.update("status", newStatus).await() }
+        } else {
+            col.document(orderId).update("status", newStatus).await()
+        }
+    }
+
     fun getInStockOrders(): List<AllParcelData> {
         return _allParcelData.filter { it.status == "In-Stock" }
     }
 
-    // New: get orders by rack id (only in-stock)
     fun getOrdersByRack(rackId: String): List<AllParcelData> {
         if (rackId.isBlank()) return emptyList()
         return _allParcelData.filter { it.status == "In-Stock" && it.rackId == rackId }
@@ -71,60 +94,26 @@ object ParcelDataManager {
         return _allParcelData.find { it.id == id }
     }
 
-    fun getAllOrders(): List<AllParcelData> {
-        return _allParcelData.toList()
-    }
-
     fun clearAllOrders() {
         _allParcelData.clear()
     }
 
-    // Save order using generic data structure (called from AddOrderandParcel screen)
-    fun saveOrderFromUI(
+    suspend fun saveOrderFromUI(
         orderId: String,
-        senderName: String,
-        senderPhone: String,
-        senderAddressLine: String,
-        senderCity: String,
-        senderPostalCode: String,
-        senderState: String,
-        receiverName: String,
-        receiverPhone: String,
-        receiverAddressLine: String,
-        receiverCity: String,
-        receiverPostalCode: String,
-        receiverState: String,
+        sender: AddressInfo,
+        receiver: AddressInfo,
         parcels: List<ParcelInfo>,
         rackId: String = ""
     ) {
-        val senderInfo = AddressInfo(
-            name = senderName,
-            phone = senderPhone,
-            addressLine = senderAddressLine,
-            city = senderCity,
-            postalCode = senderPostalCode,
-            state = senderState
-        )
-
-        val receiverInfo = AddressInfo(
-            name = receiverName,
-            phone = receiverPhone,
-            addressLine = receiverAddressLine,
-            city = receiverCity,
-            postalCode = receiverPostalCode,
-            state = receiverState
-        )
-
         val orderData = AllParcelData(
             id = orderId,
             timestamp = Date(),
-            sender = senderInfo,
-            recipient = receiverInfo,
+            sender = sender,
+            recipient = receiver,
             parcels = parcels,
-            status = "In-Stock", // Default status when adding new order
+            status = "In-Stock",
             rackId = rackId
         )
-
         addOrder(orderData)
     }
 }

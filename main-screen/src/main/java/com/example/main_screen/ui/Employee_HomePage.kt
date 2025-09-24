@@ -50,7 +50,7 @@ fun EmployeeHome(navController: NavController) {
 
 @Composable
 fun OverviewCard() {
-    val allOrders = ParcelDataManager.getAllOrders()
+    val allOrders = ParcelDataManager.allParcelData
     val totalOrders = allOrders.size
     val inStockOrders = allOrders.count { it.status == "In-Stock" }
     val outStockOrders = allOrders.count { it.status == "Out-Stock" }

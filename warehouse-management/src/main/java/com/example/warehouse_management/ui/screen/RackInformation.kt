@@ -23,7 +23,6 @@ fun RackInformationScreen(
     navController: NavController,
     modifier: Modifier = Modifier
 ) {
-    // ① 判断是否有 Rack 数据
     if (RackManager.rackList.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -34,15 +33,11 @@ fun RackInformationScreen(
         return
     }
 
-    // ② 空 rackId 直接返回上页
     if (rackId.isBlank()) {
-        LaunchedEffect(Unit) {
-            navController.popBackStack()
-        }
+        LaunchedEffect(Unit) { navController.popBackStack() }
         return
     }
 
-    // ③ 查找 Rack 数据
     val rackInfo = RackManager.getRackById(rackId)
     if (rackInfo == null) {
         Box(
@@ -54,17 +49,14 @@ fun RackInformationScreen(
         return
     }
 
-    // ④ 获取该 Rack 下的订单（只取 In-Stock，且 rackId 匹配）
-    val orders: List<AllParcelData> = ParcelDataManager
-        .getInStockOrders()
-        .filter { it.rackId == rackId }
+    // ✅ 改成直接从 ParcelDataManager 取（已经实时监听 Firestore）
+    val orders: List<AllParcelData> = ParcelDataManager.getOrdersByRack(rackId)
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Rack Information Title
         item {
             Text(
                 text = "Rack Information",
@@ -75,12 +67,8 @@ fun RackInformationScreen(
             )
         }
 
-        // Rack Info
-        item {
-            RackInfoCard(rackInfo = rackInfo)
-        }
+        item { RackInfoCard(rackInfo = rackInfo) }
 
-        // Order List
         if (orders.isNotEmpty()) {
             item {
                 Text(
@@ -107,10 +95,7 @@ fun RackInformationScreen(
             }
         }
 
-        // Bottom spacing
-        item {
-            Spacer(modifier = Modifier.height(90.dp))
-        }
+        item { Spacer(modifier = Modifier.height(90.dp)) }
     }
 }
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.example.core_data.RackInfo
+import com.example.core_data.RackManager
 import com.example.core_ui.components.FilterBy
 import com.example.core_ui.components.SearchBar
 import com.example.warehouse_management.ui.components.FloatingActionButton
@@ -34,52 +35,19 @@ fun SearchRackScreen(
     navController: NavHostController,
     onNavigateToRackInfo: ((String) -> Unit)? = null
 ) {
-    val db = FirebaseFirestore.getInstance()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     var searchText by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("name (A~Z)") }
 
-    // Multi-select state
+    // ✅ 直接用 RackManager 的 rackList（自动监听 Firestore）
+    val rackList by remember { derivedStateOf { RackManager.rackList } }
+
     var isMultiSelectMode by remember { mutableStateOf(false) }
     var selectedRacks by remember { mutableStateOf(setOf<RackInfo>()) }
     var isDeleting by remember { mutableStateOf(false) }
 
-    // Firestore rack list
-    var rackList by remember { mutableStateOf(listOf<RackInfo>()) }
-    var listenerRegistration by remember { mutableStateOf<ListenerRegistration?>(null) }
-
-    // 监听 Firestore collection raks
-    LaunchedEffect(Unit) {
-        listenerRegistration = db.collection("raks")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    println("Firestore listen failed: ${error.message}")
-                    return@addSnapshotListener
-                }
-                rackList = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        RackInfo(
-                            id = doc.getString("rakID") ?: return@mapNotNull null,
-                            name = doc.getString("name") ?: "",
-                            layer = (doc.getLong("layer") ?: 1L).toInt(),
-                            state = doc.getString("status") ?: "Idle"
-                        )
-                    } catch (e: Exception) {
-                        null
-                    }
-                } ?: emptyList()
-            }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            listenerRegistration?.remove()
-        }
-    }
-
-    // 过滤 & 排序
     val filteredRackList = remember(rackList, searchText, selectedFilter) {
         var result = if (searchText.isBlank()) rackList
         else rackList.filter { it.name.lowercase().startsWith(searchText.lowercase()) }
@@ -87,23 +55,19 @@ fun SearchRackScreen(
         result = when (selectedFilter) {
             "name (A~Z)" -> result.sortedBy { it.name.lowercase() }
             "name (Z~A)" -> result.sortedByDescending { it.name.lowercase() }
-            "Idle Rack" -> result.filter { it.state.equals("Idle", ignoreCase = true) }
-            "Non-Idle Rack" -> result.filter { !it.state.equals("Idle", ignoreCase = true) }
+            "Idle Rack" -> result.filter { it.state.equals("Idle", true) }
+            "Non-Idle Rack" -> result.filter { !it.state.equals("Idle", true) }
             else -> result
         }
-
         result
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // 搜索栏
             SearchBar(
                 value = searchText,
                 onValueChange = { searchText = it },
@@ -114,7 +78,6 @@ fun SearchRackScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // FilterBy
             FilterBy(
                 selectedFilter = selectedFilter,
                 options = listOf("name (A~Z)", "name (Z~A)", "Idle Rack", "Non-Idle Rack"),
@@ -128,11 +91,8 @@ fun SearchRackScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 列表
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 contentPadding = PaddingValues(bottom = if (isMultiSelectMode) 60.dp else 0.dp)
             ) {
@@ -142,14 +102,12 @@ fun SearchRackScreen(
                             text = if (searchText.isBlank()) {
                                 "No Rack available.\nAdd a new Rack from the add Rack page."
                             } else {
-                                "No Rack found matching \"$searchText\".\nTry a different search term."
+                                "No Rack found matching \"$searchText\"."
                             },
                             fontSize = 18.sp,
                             textAlign = TextAlign.Center,
                             color = Color.Gray,
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth()
+                            modifier = Modifier.padding(16.dp).fillMaxWidth()
                         )
                     }
                 } else {
@@ -183,18 +141,13 @@ fun SearchRackScreen(
                             }
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = rack.name,
-                                    fontSize = 20.sp,
-                                    color = Color.Black,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
+                                Text(rack.name, fontSize = 20.sp, color = Color.Black)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(text = "Layer: ${rack.layer}", fontSize = 14.sp, color = Color.DarkGray)
-                                    Text(text = "State: ${rack.state}", fontSize = 14.sp, color = Color.DarkGray)
+                                    Text("Layer: ${rack.layer}", fontSize = 14.sp, color = Color.DarkGray)
+                                    Text("State: ${rack.state}", fontSize = 14.sp, color = Color.DarkGray)
                                 }
                             }
                         }
@@ -203,13 +156,10 @@ fun SearchRackScreen(
             }
         }
 
-        // FloatingActionButton
         if (!isMultiSelectMode) {
             FloatingActionButton(
                 navController = navController,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
                 onToggleMultiSelect = {
                     isMultiSelectMode = true
                     selectedRacks = emptySet()
@@ -217,18 +167,14 @@ fun SearchRackScreen(
             )
         }
 
-        // Multi-select bottom card
         if (isMultiSelectMode) {
-            androidx.compose.material3.Card(
-                modifier = Modifier
-                    .fillMaxWidth()
+            Card(
+                modifier = Modifier.fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .padding(start = 8.dp, end = 8.dp, bottom = 25.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -237,15 +183,21 @@ fun SearchRackScreen(
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(text = if (isDeleting) "Deleting... ${selectedRacks.size}" else "Selected: ${selectedRacks.size}")
+                        Text(
+                            text = if (isDeleting) "Deleting... ${selectedRacks.size}"
+                            else "Selected: ${selectedRacks.size}"
+                        )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = {
-                            if (!isDeleting) {
-                                selectedRacks = emptySet()
-                                isMultiSelectMode = false
-                            }
-                        }, enabled = !isDeleting) { Text("Cancel") }
+                        TextButton(
+                            onClick = {
+                                if (!isDeleting) {
+                                    selectedRacks = emptySet()
+                                    isMultiSelectMode = false
+                                }
+                            },
+                            enabled = !isDeleting
+                        ) { Text("Cancel") }
                         Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
                             onClick = {
@@ -253,13 +205,9 @@ fun SearchRackScreen(
                                     isDeleting = true
                                     scope.launch {
                                         try {
-                                            val batch = db.batch()
                                             selectedRacks.forEach { rack ->
-                                                batch.delete(db.collection("raks").document(rack.id))
+                                                RackManager.removeRack(rack.id)
                                             }
-                                            batch.commit().await()
-                                        } catch (e: Exception) {
-                                            println("Delete failed: ${e.message}")
                                         } finally {
                                             isDeleting = false
                                             selectedRacks = emptySet()
@@ -270,7 +218,11 @@ fun SearchRackScreen(
                             },
                             enabled = selectedRacks.isNotEmpty() && !isDeleting
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = if (isDeleting) Color.Gray else Color.Black)
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Selected",
+                                tint = if (isDeleting) Color.Gray else Color.Black
+                            )
                         }
                     }
                 }
