@@ -120,15 +120,37 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
 
     // Driver route map
     composable(
+        route = "routeMap/{driverId}/{date}",
+        arguments = listOf(
+            navArgument("driverId") { type = NavType.StringType },
+            navArgument("date") { type = NavType.StringType }
+        )
+    ) { backStackEntry ->
+        val driverId = backStackEntry.arguments?.getString("driverId") ?: return@composable
+        val date = backStackEntry.arguments?.getString("date") ?: return@composable
+        val deliveries by deliveryViewModel.deliveries.collectAsState()
+        val stops = deliveries.filter { it.driverId == driverId && it.date == date }.flatMap { it.stops }
+        DriverDeliveryListScreen(
+            stops = stops,
+            onCheckout = { navController.popBackStack() }
+        )
+    }
+
+    // Legacy Driver route map (without date) for backward compatibility
+    composable(
         route = "routeMap/{driverId}",
-        arguments = listOf(navArgument("driverId") { type = NavType.StringType })
+        arguments = listOf(
+            navArgument("driverId") { type = NavType.StringType }
+        )
     ) { backStackEntry ->
         val driverId = backStackEntry.arguments?.getString("driverId") ?: return@composable
         val deliveries by deliveryViewModel.deliveries.collectAsState()
-        val stops = deliveries.filter { it.id == driverId }.flatMap { it.stops }
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val stops = deliveries.filter { it.driverId == driverId && it.date == today }.flatMap { it.stops }
         DriverDeliveryListScreen(
             stops = stops,
             onCheckout = { navController.popBackStack() }
         )
     }
 }
+

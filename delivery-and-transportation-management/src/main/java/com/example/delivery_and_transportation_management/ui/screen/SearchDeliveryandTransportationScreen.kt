@@ -181,7 +181,16 @@ fun SearchDeliveryandTransportationScreen(
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 AssistChip(
-                                                    onClick = { },
+                                                    onClick = {
+                                                        // Navigate to order list or first order if only one
+                                                        if (delivery.assignedOrders.size == 1) {
+                                                            navController.navigate("OrderDetails/${delivery.assignedOrders.first()}")
+                                                        } else {
+                                                            // For multiple orders, navigate to the general order screen for now
+                                                            // TODO: Implement a dedicated screen for delivery orders
+                                                            navController.navigate("order")
+                                                        }
+                                                    },
                                                     label = {
                                                         Text(
                                                             "📦 $assignedOrdersCount orders",
@@ -229,9 +238,9 @@ fun SearchDeliveryandTransportationScreen(
 fun PreviewSearchDeliveryandTransportationScreen() {
     val navController = rememberNavController()
     val fakeDeliveries = listOf(
-        Delivery(id = "1", plateNumber = "ABC123", driverName = "John Doe", type = "Van", date = "2025-09-15", stops = emptyList(), assignedOrders = emptyList()),
-        Delivery(id = "2", plateNumber = "XYZ789", driverName = "Alice Lee", type = "Truck", date = "2025-09-16", stops = emptyList(), assignedOrders = emptyList()),
-        Delivery(id = "3", plateNumber = "LMN456", driverName = "Bob Tan", type = "Bike", date = "2025-09-17", stops = emptyList(), assignedOrders = emptyList())
+        Delivery(id = "1", driverId = "D001", plateNumber = "ABC123", driverName = "John Doe", type = "Van", date = "2025-09-15", stops = emptyList(), assignedOrders = emptyList()),
+        Delivery(id = "2", driverId = "D002", plateNumber = "XYZ789", driverName = "Alice Lee", type = "Truck", date = "2025-09-16", stops = emptyList(), assignedOrders = emptyList()),
+        Delivery(id = "3", driverId = "D003", plateNumber = "LMN456", driverName = "Bob Tan", type = "Bike", date = "2025-09-17", stops = emptyList(), assignedOrders = emptyList())
     )
     SearchDeliveryandTransportationScreen(
         navController = navController,

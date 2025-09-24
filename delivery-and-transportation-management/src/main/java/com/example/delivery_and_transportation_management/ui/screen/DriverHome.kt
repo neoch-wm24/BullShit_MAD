@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,35 +34,127 @@ fun DriverHome(
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
     }
 
-    // 示例数据（包含 stops）
+    // Demo data with real Singapore addresses
     val demoDeliveries = listOf(
         Delivery(
-            id = employeeID,
+            id = "demo-delivery-1",
+            driverId = employeeID,
             driverName = "John Doe",
             type = "Grocery",
             date = today,
             plateNumber = "ABC123",
             stops = listOf(
-                Stop("Alice", "123 Street A", com.google.android.gms.maps.model.LatLng(3.139, 101.6869)),
-                Stop("Bob", "456 Street B", com.google.android.gms.maps.model.LatLng(3.0738, 101.5183))
-            )
+                Stop("Alice Johnson", "1 Raffles Place, Singapore 048616", com.google.android.gms.maps.model.LatLng(1.2844, 103.8511)),
+                Stop("Bob Smith", "Marina Bay Sands, 10 Bayfront Ave, Singapore 018956", com.google.android.gms.maps.model.LatLng(1.2834, 103.8607)),
+                Stop("Charlie Brown", "Gardens by the Bay, 18 Marina Gardens Dr, Singapore 018953", com.google.android.gms.maps.model.LatLng(1.2816, 103.8636)),
+                Stop("Diana Lee", "Singapore Flyer, 30 Raffles Ave, Singapore 039803", com.google.android.gms.maps.model.LatLng(1.2897, 103.8634))
+            ),
+            assignedOrders = listOf("ORD001", "ORD002", "ORD003")
         )
     )
 
     // Collect deliveries from StateFlow
     val deliveries by deliveryViewModel.deliveries.collectAsState()
-    val actualDeliveries = if (deliveries.isEmpty()) demoDeliveries else deliveries.filter { it.id == employeeID }
 
     var selectedDate by remember { mutableStateOf(today) }
     var showCalendar by remember { mutableStateOf(false) }
     var showRoute by remember { mutableStateOf(false) }
     var selectedStop by remember { mutableStateOf<Stop?>(null) }
 
-    val currentDeliveries = actualDeliveries.filter { it.date == selectedDate }
-    // Fallback to demo for today if backend has no matching entries for this driver/date
-    val uiDeliveries = if (currentDeliveries.isNotEmpty()) currentDeliveries else if (selectedDate == today) demoDeliveries else emptyList()
+    // Debug: Enhanced logging for September 25th issue
+    LaunchedEffect(deliveries, employeeID, selectedDate) {
+        println("DriverHome Debug - employeeID: $employeeID")
+        println("DriverHome Debug - selectedDate: $selectedDate")
+        println("DriverHome Debug - today: $today")
+        println("DriverHome Debug - Total deliveries from DB: ${deliveries.size}")
 
-    val completedCount = uiDeliveries.count { it.plateNumber != null }
+        if (deliveries.isEmpty()) {
+            println("DriverHome Debug - NO DELIVERIES FOUND IN DATABASE!")
+            println("DriverHome Debug - Check Firestore collection 'deliveries'")
+        } else {
+            println("DriverHome Debug - All deliveries in database:")
+            deliveries.forEachIndexed { index, delivery ->
+                println("DriverHome Debug - Delivery $index: id='${delivery.id}', driverId='${delivery.driverId}', driverName='${delivery.driverName}', date='${delivery.date}', plateNumber='${delivery.plateNumber}', orders=${delivery.assignedOrders.size}")
+            }
+        }
+
+        val actualDeliveries = deliveries.filter { it.driverId == employeeID }
+        println("DriverHome Debug - Deliveries for driver $employeeID: ${actualDeliveries.size}")
+
+        if (actualDeliveries.isEmpty()) {
+            println("DriverHome Debug - NO DELIVERIES MATCH DRIVER ID: $employeeID")
+            val availableDriverIds = deliveries.map { it.driverId }.distinct().filter { it.isNotBlank() }
+            println("DriverHome Debug - Available driver IDs: $availableDriverIds")
+            if (availableDriverIds.isEmpty()) {
+                println("DriverHome Debug - All deliveries have empty driverId!")
+            }
+        } else {
+            actualDeliveries.forEach { delivery ->
+                println("DriverHome Debug - Driver's delivery: id=${delivery.id}, date='${delivery.date}', plateNumber='${delivery.plateNumber}'")
+            }
+        }
+
+        // Special debug for September 25th
+        if (selectedDate.contains("25") || selectedDate.contains("09")) {
+            println("DriverHome Debug - SEARCHING FOR SEPTEMBER 25th DATA...")
+            deliveries.forEach { delivery ->
+                if (delivery.date.contains("25") || delivery.date.contains("09") || delivery.date.contains("9")) {
+                    println("DriverHome Debug - Found potential Sept 25 delivery: date='${delivery.date}', driverId='${delivery.driverId}', driverName='${delivery.driverName}'")
+                }
+            }
+        }
+    }
+
+    val actualDeliveries = deliveries.filter { it.driverId == employeeID }
+
+    // Enhanced date filtering to handle multiple formats
+    val currentDateDeliveries = actualDeliveries.filter { delivery ->
+        val deliveryDate = delivery.date
+        val isMatch = when {
+            // Exact match
+            deliveryDate == selectedDate -> true
+            // Empty date matches today
+            deliveryDate.isBlank() && selectedDate == today -> true
+            // Handle September 25th in various formats
+            (selectedDate.contains("25") && selectedDate.contains("09")) && (
+                deliveryDate == "25-9-2025" ||
+                deliveryDate == "2025-9-25" ||
+                deliveryDate == "25/9/2025" ||
+                deliveryDate == "25-09-2025" ||
+                deliveryDate == "2025/09/25" ||
+                (deliveryDate.contains("25") && (deliveryDate.contains("9") || deliveryDate.contains("09")))
+            ) -> true
+            else -> false
+        }
+
+        if (isMatch) {
+            println("DriverHome Debug - DATE MATCH FOUND: delivery.date='$deliveryDate' matches selectedDate='$selectedDate'")
+        }
+
+        isMatch
+    }
+
+    println("DriverHome Debug - Final filtered deliveries for $selectedDate: ${currentDateDeliveries.size}")
+
+    val uiDeliveries = when {
+        // Show real deliveries if found
+        currentDateDeliveries.isNotEmpty() -> {
+            println("DriverHome Debug - Showing ${currentDateDeliveries.size} real deliveries")
+            currentDateDeliveries
+        }
+        // Show demo data for today if no real data
+        selectedDate == today -> {
+            println("DriverHome Debug - Showing demo data for today")
+            demoDeliveries
+        }
+        // Show empty for other dates
+        else -> {
+            println("DriverHome Debug - Showing empty list for $selectedDate")
+            emptyList()
+        }
+    }
+
+    val completedCount = uiDeliveries.count { it.assignedOrders.isNotEmpty() }
     val incompleteCount = uiDeliveries.size - completedCount
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -70,7 +163,7 @@ fun DriverHome(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // ===== 顶部三格统计 =====
+            // Top statistics cards
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -82,7 +175,7 @@ fun DriverHome(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ===== 日期选择 =====
+            // Date selection
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { showCalendar = !showCalendar }) {
                     Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Date")
@@ -101,27 +194,48 @@ fun DriverHome(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ===== 配送记录 =====
+            // Deliveries list
             Text("Deliveries for $selectedDate", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
-                items(uiDeliveries) { delivery ->
-                    DeliveryCard(delivery) {
-                        if (delivery.stops.isNotEmpty()) {
-                            selectedStop = delivery.stops.first()
-                            showRoute = true // enable embedded route preview
+
+            if (uiDeliveries.isEmpty()) {
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No deliveries found for $selectedDate",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Check console for debug information",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(uiDeliveries) { delivery ->
+                        DeliveryCard(delivery) {
+                            if (delivery.stops.isNotEmpty()) {
+                                selectedStop = delivery.stops.first()
+                                showRoute = true
+                            }
                         }
                     }
                 }
             }
 
-            // ===== 当天才有按钮 =====
+            // Start delivery route button
             if (selectedDate == today && uiDeliveries.isNotEmpty()) {
                 Button(
                     onClick = {
-                        navController.navigate("routeMap/$employeeID")
+                        navController.navigate("routeMap/$employeeID/$selectedDate")
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
@@ -130,7 +244,7 @@ fun DriverHome(
                 }
             }
 
-            // ===== 内嵌路线展示 =====
+            // Embedded route display
             if (showRoute && uiDeliveries.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Today's Route", style = MaterialTheme.typography.titleLarge)
@@ -170,7 +284,7 @@ fun DriverHome(
             }
         }
 
-        // ===== 覆盖式日历 =====
+        // Calendar overlay
         if (showCalendar) {
             Card(
                 modifier = Modifier
@@ -197,7 +311,7 @@ fun DriverHome(
         }
     }
 
-    // ===== Stop 详情 Dialog =====
+    // Stop details dialog
     if (selectedStop != null) {
         val stop = selectedStop
         AlertDialog(
@@ -232,7 +346,7 @@ fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) {
         ) {
             Text(
                 label,
-                style = MaterialTheme.typography.labelSmall // ✅ 改小
+                style = MaterialTheme.typography.labelSmall
             )
             Text(
                 value.toString(),
@@ -242,26 +356,237 @@ fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) {
     }
 }
 
-
 @Composable
 fun DeliveryCard(delivery: Delivery, onClick: () -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 6.dp)
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(16.dp)
         ) {
-            Text("Delivery ID: ${delivery.id}", style = MaterialTheme.typography.bodyMedium)
-            Text("Driver: ${delivery.driverName}", style = MaterialTheme.typography.bodySmall)
-            Text("Type: ${delivery.type}", style = MaterialTheme.typography.bodySmall)
-            Text("Date: ${delivery.date}", style = MaterialTheme.typography.bodySmall)
-            delivery.plateNumber?.let {
-                Text("Vehicle: $it", style = MaterialTheme.typography.bodySmall)
+            // Header with delivery ID and status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Delivery #${delivery.id.take(8)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = delivery.plateNumber ?: "No Vehicle Assigned",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Status badge
+                val statusColor = if (delivery.assignedOrders.isNotEmpty())
+                    MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                val statusText = if (delivery.assignedOrders.isNotEmpty())
+                    "ACTIVE" else "PENDING"
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = statusColor.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Text(
+                        text = statusText,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Information grid
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    InfoRow(
+                        label = "Driver",
+                        value = delivery.driverName,
+                        icon = "👤"
+                    )
+                    InfoRow(
+                        label = "Vehicle Type",
+                        value = delivery.type,
+                        icon = "🚛"
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    InfoRow(
+                        label = "Scheduled Date",
+                        value = if (delivery.date.isNotBlank()) delivery.date else "Not Scheduled",
+                        icon = "📅"
+                    )
+                    InfoRow(
+                        label = "Stops",
+                        value = "${delivery.stops.size} locations",
+                        icon = "📍"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Orders section
+            if (delivery.assignedOrders.isNotEmpty()) {
+                AssistChip(
+                    onClick = { },
+                    label = {
+                        Text(
+                            "📦 ${delivery.assignedOrders.size} ${if (delivery.assignedOrders.size == 1) "order" else "orders"} assigned",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Order details
+                Column {
+                    delivery.assignedOrders.take(3).forEach { orderId ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "•",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.width(16.dp)
+                            )
+                            Text(
+                                "Order #${orderId.take(8)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (delivery.assignedOrders.size > 3) {
+                        Text(
+                            "   +${delivery.assignedOrders.size - 3} more orders...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                }
+            } else {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("⚠️", modifier = Modifier.padding(end = 8.dp))
+                        Text(
+                            "No orders assigned to this delivery",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
+            // Delivery locations preview
+            if (delivery.stops.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Delivery Locations:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                delivery.stops.take(2).forEach { stop ->
+                    Row(
+                        modifier = Modifier.padding(vertical = 1.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text("📍", modifier = Modifier.padding(end = 4.dp))
+                        Column {
+                            Text(
+                                stop.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                stop.address,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+                if (delivery.stops.size > 2) {
+                    Text(
+                        "   +${delivery.stops.size - 2} more locations...",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String,
+    icon: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = icon,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(end = 4.dp)
+        )
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -291,7 +616,7 @@ fun WeekRow(selectedDate: String, onDateSelected: (String) -> Unit) {
                     .weight(1f)
                     .clickable { onDateSelected(date) }
             ) {
-                Text(label, style = MaterialTheme.typography.bodySmall)
+                Text(label ?: "", style = MaterialTheme.typography.bodySmall)
                 Text(
                     text = date.substring(8),
                     style = if (date == selectedDate)
@@ -301,12 +626,4 @@ fun WeekRow(selectedDate: String, onDateSelected: (String) -> Unit) {
             }
         }
     }
-}
-
-// 工具函数: 获取相对日期
-fun getRelativeDate(offset: Int): String {
-    val cal = Calendar.getInstance()
-    cal.add(Calendar.DAY_OF_MONTH, offset)
-    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    return sdf.format(cal.time)
 }

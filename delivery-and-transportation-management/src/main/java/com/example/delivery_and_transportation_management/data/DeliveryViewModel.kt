@@ -43,11 +43,27 @@ class DeliveryViewModel : ViewModel() {
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("DeliveryViewModel", "Error listening to deliveries: ${error.message}")
+                    println("DeliveryViewModel Firebase Error: ${error.message}")
                     return@addSnapshotListener
                 }
 
                 val list = snapshot?.toObjects(Delivery::class.java) ?: emptyList()
                 Log.d("DeliveryViewModel", "Loaded ${list.size} deliveries")
+                println("DeliveryViewModel Firebase Debug - Loaded ${list.size} deliveries from Firebase")
+
+                // Enhanced debugging for each delivery
+                list.forEachIndexed { index, delivery ->
+                    println("DeliveryViewModel Firebase Debug - Delivery $index: id='${delivery.id}', driverId='${delivery.driverId}', driverName='${delivery.driverName}', date='${delivery.date}', plateNumber='${delivery.plateNumber}', assignedOrders=${delivery.assignedOrders.size}")
+                }
+
+                if (list.isEmpty()) {
+                    println("DeliveryViewModel Firebase Debug - NO DELIVERIES FOUND IN FIREBASE!")
+                    println("DeliveryViewModel Firebase Debug - Check if:")
+                    println("DeliveryViewModel Firebase Debug - 1. Deliveries collection exists in Firestore")
+                    println("DeliveryViewModel Firebase Debug - 2. Data was saved correctly")
+                    println("DeliveryViewModel Firebase Debug - 3. Firebase rules allow reading")
+                }
+
                 _deliveries.value = list
             }
 

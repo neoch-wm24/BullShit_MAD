@@ -2,10 +2,13 @@ package com.example.delivery_and_transportation_management.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
 
@@ -46,7 +49,16 @@ fun DeliveryDetail(
                     val assignedOrdersCount = delivery.assignedOrders.size
                     if (assignedOrdersCount > 0) {
                         AssistChip(
-                            onClick = { },
+                            onClick = {
+                                // Navigate to order list or first order if only one
+                                if (delivery.assignedOrders.size == 1) {
+                                    navController.navigate("OrderDetails/${delivery.assignedOrders.first()}")
+                                } else {
+                                    // For multiple orders, navigate to the general order screen for now
+                                    // TODO: Implement a dedicated screen for delivery orders
+                                    navController.navigate("order")
+                                }
+                            },
                             label = { Text("\uD83D\uDCE6 $assignedOrdersCount orders") },
                             colors = AssistChipDefaults.assistChipColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer

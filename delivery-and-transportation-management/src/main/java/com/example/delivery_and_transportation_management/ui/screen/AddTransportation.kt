@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.google.firebase.firestore.FirebaseFirestore
+import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,22 +24,27 @@ fun AddTransportationScreen(
     deliveryViewModel: DeliveryViewModel = viewModel()
 ) {
     var plateNumber by rememberSaveable { mutableStateOf("") }
-    var driverList by remember { mutableStateOf(listOf<String>()) }
+    var driverList by remember { mutableStateOf(listOf<Pair<String, String>>()) } // (driverName, driverId)
     var selectedDriver by rememberSaveable { mutableStateOf("") }
+    var selectedDriverId by rememberSaveable { mutableStateOf("") }
     var expandedDriver by rememberSaveable { mutableStateOf(false) }
 
     var expandedType by rememberSaveable { mutableStateOf(false) }
     var selectedType by rememberSaveable { mutableStateOf("Car") }
     val vehicleTypes = listOf("Car", "Van", "Truck", "Container Truck")
 
-    // 加载司机
+    // 加载司机 - Get both name and ID
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance()
             .collection("users")
             .whereEqualTo("role", "driver")
             .get()
             .addOnSuccessListener { snapshot ->
-                driverList = snapshot.documents.mapNotNull { it.getString("name") }
+                driverList = snapshot.documents.mapNotNull { doc ->
+                    val name = doc.getString("name")
+                    val id = doc.getString("id") ?: doc.id
+                    if (name != null) Pair(name, id) else null
+                }
             }
             .addOnFailureListener {
                 driverList = emptyList()
@@ -94,11 +100,12 @@ fun AddTransportationScreen(
                 expanded = expandedDriver,
                 onDismissRequest = { expandedDriver = false }
             ) {
-                driverList.forEach { driver ->
+                driverList.forEach { (driverName, driverId) ->
                     DropdownMenuItem(
-                        text = { Text(driver) },
+                        text = { Text(driverName) },
                         onClick = {
-                            selectedDriver = driver
+                            selectedDriver = driverName
+                            selectedDriverId = driverId
                             expandedDriver = false
                         }
                     )
@@ -141,13 +148,16 @@ fun AddTransportationScreen(
             onClick = {
                 if (plateNumber.isNotBlank() &&
                     selectedDriver.isNotBlank() &&
+                    selectedDriverId.isNotBlank() &&
                     isValidPlateNumber(plateNumber)
                 ) {
+                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                     val newDelivery = Delivery(
                         id = UUID.randomUUID().toString(),
+                        driverId = selectedDriverId, // ✅ Now properly set with actual driver ID
                         driverName = selectedDriver,
                         type = selectedType,
-                        date = "", // 用户可加一个日期选择
+                        date = today, // ✅ Set to today's date so it shows in DriverHome
                         plateNumber = plateNumber,
                         stops = emptyList(),
                         assignedOrders = emptyList()
@@ -159,6 +169,7 @@ fun AddTransportationScreen(
             modifier = Modifier.align(Alignment.End),
             enabled = plateNumber.isNotBlank() &&
                     selectedDriver.isNotBlank() &&
+                    selectedDriverId.isNotBlank() &&
                     isValidPlateNumber(plateNumber)
         ) {
             Text("Save")
