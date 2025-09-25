@@ -43,42 +43,83 @@ object ParcelDataManager {
     private var listener: ListenerRegistration? = null
 
     init {
-        // Firestore 实时监听 orders 集合
-        listener = db.collection("orders")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) return@addSnapshotListener
-                if (snapshot != null) {
-                    _allParcelData.clear()
-                    _allParcelData.addAll(snapshot.toObjects(AllParcelData::class.java))
-                }
+        // ✅ REMOVED: No longer listen to "orders" collection
+        // We only use "racks" collection now
+    }
+
+    // ✅ Get orders from racks collection for a specific rack
+    suspend fun getOrdersFromRack(rackId: String): List<AllParcelData> {
+        return try {
+            val snapshot = db.collection("racks")
+                .document(rackId)
+                .collection("orders")
+                .get()
+                .await()
+
+            snapshot.toObjects(AllParcelData::class.java)
+                .map { it.copy(rackId = rackId) } // Ensure rackId is set
+                .filter { it.status != "Out-Stock" } // Filter out out-stocked orders
+        } catch (e: Exception) {
+            println("Failed to get orders from rack $rackId: ${e.message}")
+            emptyList()
+        }
+    }
+
+    // ✅ Get all orders from all racks
+    suspend fun getAllOrdersFromRacks(): List<AllParcelData> {
+        return try {
+            val allOrders = mutableListOf<AllParcelData>()
+            val racksSnapshot = db.collection("racks").get().await()
+
+            for (rackDoc in racksSnapshot.documents) {
+                val rackId = rackDoc.id
+                val ordersSnapshot = db.collection("racks")
+                    .document(rackId)
+                    .collection("orders")
+                    .get()
+                    .await()
+
+                val rackOrders = ordersSnapshot.toObjects(AllParcelData::class.java)
+                    .map { it.copy(rackId = rackId) }
+
+                allOrders.addAll(rackOrders)
             }
-    }
 
-    suspend fun addOrder(orderData: AllParcelData) {
-        val col = db.collection("orders")
-        val useAutoId = orderData.id.isBlank() || orderData.id.contains('/')
-        val docRef = if (useAutoId) col.document() else col.document(orderData.id)
-        docRef.set(orderData).await()
-    }
-
-    suspend fun removeOrder(orderId: String) {
-        val col = db.collection("orders")
-        if (orderId.isBlank() || orderId.contains('/')) {
-            val snapshot = col.whereEqualTo("id", orderId).get().await()
-            snapshot.documents.forEach { it.reference.delete().await() }
-        } else {
-            col.document(orderId).delete().await()
+            allOrders
+        } catch (e: Exception) {
+            println("Failed to get all orders from racks: ${e.message}")
+            emptyList()
         }
     }
 
-    suspend fun updateOrderStatus(orderId: String, newStatus: String) {
-        val col = db.collection("orders")
-        if (orderId.isBlank() || orderId.contains('/')) {
-            val snapshot = col.whereEqualTo("id", orderId).get().await()
-            snapshot.documents.forEach { it.reference.update("status", newStatus).await() }
-        } else {
-            col.document(orderId).update("status", newStatus).await()
-        }
+    // ✅ 写入 racks/{rackId}/orders
+    suspend fun addOrder(rackId: String, orderData: AllParcelData) {
+        db.collection("racks")
+            .document(rackId)
+            .collection("orders")
+            .document(orderData.id)
+            .set(orderData.copy(rackId = rackId))
+            .await()
+    }
+
+    // ✅ 删除
+    suspend fun removeOrder(rackId: String, orderId: String) {
+        db.collection("racks")
+            .document(rackId)
+            .collection("orders")
+            .document(orderId)
+            .delete()
+            .await()
+    }
+
+    // ✅ 更新状态
+    suspend fun updateOrderStatus(rackId: String, orderId: String, newStatus: String) {
+        db.collection("racks")
+            .document(rackId)
+            .collection("orders")
+            .document(orderId)
+            .update("status", newStatus)
+            .await()
     }
 
     fun getInStockOrders(): List<AllParcelData> {
@@ -86,8 +127,7 @@ object ParcelDataManager {
     }
 
     fun getOrdersByRack(rackId: String): List<AllParcelData> {
-        if (rackId.isBlank()) return emptyList()
-        return _allParcelData.filter { it.status == "In-Stock" && it.rackId == rackId }
+        return _allParcelData.filter { it.rackId == rackId }
     }
 
     fun getOrderById(id: String): AllParcelData? {
@@ -98,12 +138,13 @@ object ParcelDataManager {
         _allParcelData.clear()
     }
 
+    // ✅ 从 UI 保存
     suspend fun saveOrderFromUI(
         orderId: String,
         sender: AddressInfo,
         receiver: AddressInfo,
         parcels: List<ParcelInfo>,
-        rackId: String = ""
+        rackId: String
     ) {
         val orderData = AllParcelData(
             id = orderId,
@@ -114,6 +155,6 @@ object ParcelDataManager {
             status = "In-Stock",
             rackId = rackId
         )
-        addOrder(orderData)
+        addOrder(rackId, orderData)
     }
 }

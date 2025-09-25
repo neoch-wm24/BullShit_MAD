@@ -6,17 +6,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.core_data.AllParcelData
 import com.example.core_data.AddressInfo
 import com.example.core_data.ParcelInfo
-import com.example.core_data.ParcelDataManager
 import com.example.core_data.RackManager
-import com.example.core_ui.theme.PrimaryColor
-import java.util.Date
-import androidx.compose.runtime.rememberCoroutineScope
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +34,8 @@ fun InStockScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
+    val db = FirebaseFirestore.getInstance()
+
     val rackNames = RackManager.getRackNames()
     val hasRacks = rackNames.isNotEmpty()
 
@@ -90,15 +92,11 @@ fun InStockScreen(
                 ) {
                     rackNames.forEach { rackName ->
                         DropdownMenuItem(
-                            text = { Text(rackName, color = PrimaryColor) },
+                            text = { Text(rackName) },
                             onClick = {
                                 selectedRack = rackName
                                 expanded = false
-                            },
-                            colors = MenuDefaults.itemColors(
-                                textColor = PrimaryColor,
-                                disabledTextColor = PrimaryColor.copy(alpha = 0.4f)
-                            )
+                            }
                         )
                     }
                 }
@@ -112,13 +110,9 @@ fun InStockScreen(
             onClick = {
                 scope.launch {
                     try {
-                        // 保存 rack 信息
-                        RackManager.setCurrentRack(selectedRack)
-
                         val senderInfo = AddressInfo(name = sender)
                         val receiverInfo = AddressInfo(name = receiver)
 
-                        // derive rack id by matching name from RackManager.rackList
                         val associatedRackId = RackManager.rackList
                             .firstOrNull { it.name == selectedRack }
                             ?.id ?: ""
@@ -137,11 +131,17 @@ fun InStockScreen(
                                 )
                             },
                             timestamp = Date(),
+                            status = "In-Stock",
                             rackId = associatedRackId
                         )
 
-                        // ✅ 保存订单到 Firestore
-                        ParcelDataManager.addOrder(orderData)
+                        // ✅ 保存订单到 racks/{rackId}/orders
+                        db.collection("racks")
+                            .document(associatedRackId)
+                            .collection("orders")
+                            .document(orderId)
+                            .set(orderData)
+                            .await()
 
                         errorMessage = null
                         navController?.navigate("home") {

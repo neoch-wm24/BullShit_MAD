@@ -70,12 +70,13 @@ fun NavGraphBuilder.warehouseNavigation(navController: NavHostController) {
 
     // 出库界面
     composable(
-        route = "outStock/{orderId}/{sender}/{receiver}/{parcelCount}/{rackName}",
+        route = "outStock/{orderId}/{sender}/{receiver}/{parcelCount}/{rackId}/{rackName}",
         arguments = listOf(
             navArgument("orderId") { type = NavType.StringType },
             navArgument("sender") { type = NavType.StringType },
             navArgument("receiver") { type = NavType.StringType },
             navArgument("parcelCount") { type = NavType.IntType },
+            navArgument("rackId") { type = NavType.StringType },
             navArgument("rackName") {
                 type = NavType.StringType
                 defaultValue = ""
@@ -86,6 +87,7 @@ fun NavGraphBuilder.warehouseNavigation(navController: NavHostController) {
         val sender = backStackEntry.arguments?.getString("sender") ?: ""
         val receiver = backStackEntry.arguments?.getString("receiver") ?: ""
         val parcelCount = backStackEntry.arguments?.getInt("parcelCount") ?: 0
+        val rackId = backStackEntry.arguments?.getString("rackId") ?: ""
         val rackName = backStackEntry.arguments?.getString("rackName") ?: ""
 
         OutStockScreen(
@@ -93,6 +95,7 @@ fun NavGraphBuilder.warehouseNavigation(navController: NavHostController) {
             sender = sender,
             receiver = receiver,
             parcelCount = parcelCount,
+            rackId = rackId,
             currentRackName = rackName,
             navController = navController
         )

@@ -177,8 +177,10 @@ private fun navigateWithQr(code: String, navController: NavController, selectedT
             val route = "inStock/$orderId/$sender/$receiver/$parcelCount"
             navController.navigate(route)
         } else {
-            val rackName = json.optString("rack", "")
-            val route = "outStock/$orderId/$sender/$receiver/$parcelCount/$rackName"
+            // ✅ For Out-Stock, we need to find which rack the order is in
+            // Since we can't do async operations here, navigate to a simplified route
+            // and let OutStock screen find the rack information
+            val route = "outStock/$orderId/$sender/$receiver/$parcelCount/AUTO_DETECT/AUTO_DETECT"
             navController.navigate(route)
         }
     } catch (e: Exception) {

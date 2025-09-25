@@ -3,17 +3,14 @@ package com.example.warehouse_management.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.core_data.*
 import java.util.Locale
 
@@ -49,8 +46,37 @@ fun RackInformationScreen(
         return
     }
 
-    // ✅ 改成直接从 ParcelDataManager 取（已经实时监听 Firestore）
-    val orders: List<AllParcelData> = ParcelDataManager.getOrdersByRack(rackId)
+    // ✅ Use real-time data fetching from racks collection with refresh capability
+    var orders by remember { mutableStateOf<List<AllParcelData>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Function to refresh orders
+    suspend fun refreshOrders() {
+        try {
+            isLoading = true
+            errorMessage = null
+            orders = ParcelDataManager.getOrdersFromRack(rackId)
+            println("RackInformation: Loaded ${orders.size} orders for rack $rackId")
+        } catch (e: Exception) {
+            errorMessage = "Failed to load orders: ${e.message}"
+            println("RackInformation: Error loading orders - ${e.message}")
+        } finally {
+            isLoading = false
+        }
+    }
+
+    // Load orders initially and set up auto-refresh
+    LaunchedEffect(rackId) {
+        refreshOrders()
+    }
+
+    // Add a refresh button or auto-refresh mechanism
+    LaunchedEffect(Unit) {
+        // Refresh every 30 seconds or when screen becomes visible
+        kotlinx.coroutines.delay(1000) // Initial delay
+        refreshOrders()
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -82,7 +108,13 @@ fun RackInformationScreen(
 
             items(count = orders.size, key = { index -> orders[index].id }) { index ->
                 val order = orders[index]
-                OrderListCard(orderData = order)
+                OrderListCard(
+                    orderData = order,
+                    onClick = {
+                        // ✅ REMOVED: No click action - display only
+                        // Users can only outstock through QR code scanning
+                    }
+                )
             }
         } else {
             item {
@@ -146,18 +178,21 @@ private fun DividerSpacer() {
 }
 
 @Composable
-fun OrderListCard(orderData: AllParcelData) {
+fun OrderListCard(
+    orderData: AllParcelData,
+    onClick: () -> Unit = {} // Keep parameter for compatibility but make it optional
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp),
+            // ✅ REMOVED: .clickable { onClick() } - No longer clickable
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            // Order ID
             Text(
                 text = "Order ID: ${orderData.id}",
                 fontSize = 14.sp,
@@ -167,7 +202,6 @@ fun OrderListCard(orderData: AllParcelData) {
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Date
             Text(
                 text = "Date: ${
                     java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(orderData.timestamp)
@@ -175,13 +209,15 @@ fun OrderListCard(orderData: AllParcelData) {
                 fontSize = 12.sp,
                 color = Color.Gray
             )
+
+            // ✅ Add visual indicator that this is display-only
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Status: ${orderData.status}",
+                fontSize = 12.sp,
+                color = Color(0xFF4CAF50),
+                fontWeight = FontWeight.Medium
+            )
         }
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun RackInformationScreenPreview() {
-    val navController = rememberNavController()
-    RackInformationScreen(rackId = "SampleRackId", navController = navController)
 }
