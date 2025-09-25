@@ -1,11 +1,11 @@
 package com.example.delivery_and_transportation_management.data
 
-import com.google.android.gms.maps.model.LatLng
+import org.osmdroid.util.GeoPoint
 
 data class Stop(
     val name: String,
     val address: String,
-    val location: LatLng
+    val location: GeoPoint
 )
 
 data class Delivery(

@@ -1,5 +1,6 @@
 package com.example.delivery_and_transportation_management.ui.screen
 
+import android.preference.PreferenceManager
 import android.widget.CalendarView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,7 +21,12 @@ import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.data.Stop
-import com.google.maps.android.compose.*
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -32,7 +38,7 @@ fun DriverHome(
 ) {
     val today = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
 
-    // Demo data uses employeeID now
+    // Demo data 使用 OSMDroid GeoPoint
     val demoDeliveries = listOf(
         Delivery(
             id = "demo-delivery-1",
@@ -42,10 +48,10 @@ fun DriverHome(
             date = today,
             plateNumber = "ABC123",
             stops = listOf(
-                Stop("Alice Johnson", "1 Raffles Place, Singapore 048616", com.google.android.gms.maps.model.LatLng(1.2844, 103.8511)),
-                Stop("Bob Smith", "Marina Bay Sands, 10 Bayfront Ave, Singapore 018956", com.google.android.gms.maps.model.LatLng(1.2834, 103.8607)),
-                Stop("Charlie Brown", "Gardens by the Bay, 18 Marina Gardens Dr, Singapore 018953", com.google.android.gms.maps.model.LatLng(1.2816, 103.8636)),
-                Stop("Diana Lee", "Singapore Flyer, 30 Raffles Ave, Singapore 039803", com.google.android.gms.maps.model.LatLng(1.2897, 103.8634))
+                Stop("Alice Johnson", "1 Raffles Place, Singapore 048616", GeoPoint(1.2844, 103.8511)),
+                Stop("Bob Smith", "Marina Bay Sands, 10 Bayfront Ave, Singapore 018956", GeoPoint(1.2834, 103.8607)),
+                Stop("Charlie Brown", "Gardens by the Bay, 18 Marina Gardens Dr, Singapore 018953", GeoPoint(1.2816, 103.8636)),
+                Stop("Diana Lee", "Singapore Flyer, 30 Raffles Ave, Singapore 039803", GeoPoint(1.2897, 103.8634))
             ),
             assignedOrders = listOf("ORD001", "ORD002", "ORD003")
         )
@@ -223,41 +229,56 @@ fun DriverHome(
                 }
             }
 
-            // Embedded route display
+            // OSMDroid route display (替换 Google Maps 的部分)
             if (showRoute && uiDeliveries.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Today's Route", style = MaterialTheme.typography.titleLarge)
+                Text("Today's OSM Route", style = MaterialTheme.typography.titleLarge)
 
                 val stops = uiDeliveries.flatMap { it.stops }
                 if (stops.isNotEmpty()) {
-                    val cameraPositionState = rememberCameraPositionState {
-                        position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(stops.first().location, 12f)
-                    }
-
-                    GoogleMap(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp),
-                        cameraPositionState = cameraPositionState
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        stops.forEach { stop ->
-                            Marker(
-                                state = MarkerState(position = stop.location),
-                                title = stop.name,
-                                snippet = stop.address,
-                                onClick = {
-                                    selectedStop = stop
-                                    false
+                        AndroidView(
+                            factory = { ctx ->
+                                Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx))
+                                Configuration.getInstance().userAgentValue = ctx.packageName
+
+                                val mapView = MapView(ctx)
+                                mapView.setTileSource(TileSourceFactory.MAPNIK)
+                                mapView.setMultiTouchControls(true)
+
+                                if (stops.isNotEmpty()) {
+                                    // 设置中心点
+                                    mapView.controller.setCenter(stops.first().location)
+                                    mapView.controller.setZoom(12.0)
+
+                                    // 添加标记
+                                    stops.forEach { stop ->
+                                        val marker = Marker(mapView)
+                                        marker.position = stop.location
+                                        marker.title = stop.name
+                                        marker.snippet = stop.address
+                                        mapView.overlays.add(marker)
+                                    }
+
+                                    // 绘制路线
+                                    if (stops.size > 1) {
+                                        val polyline = Polyline()
+                                        polyline.setPoints(stops.map { it.location })
+                                        polyline.color = android.graphics.Color.BLUE
+                                        polyline.width = 8.0f
+                                        mapView.overlays.add(polyline)
+                                    }
                                 }
-                            )
-                        }
-                        if (stops.size > 1) {
-                            Polyline(
-                                points = stops.map { it.location },
-                                color = Color.Blue,
-                                width = 8f
-                            )
-                        }
+
+                                mapView
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }

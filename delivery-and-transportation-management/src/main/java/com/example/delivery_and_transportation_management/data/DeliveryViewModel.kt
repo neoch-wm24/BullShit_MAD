@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.example.order_management.ui.screen.Order
 import com.google.firebase.firestore.GeoPoint
+import org.osmdroid.util.GeoPoint as OSMGeoPoint
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -103,16 +104,16 @@ class DeliveryViewModel : ViewModel() {
                                     val name = map["name"] as? String ?: ""
                                     val address = map["address"] as? String ?: ""
                                     val locationAny = map["location"]
-                                    val latLng = when (locationAny) {
-                                        is GeoPoint -> com.google.android.gms.maps.model.LatLng(locationAny.latitude, locationAny.longitude)
+                                    val osmGeoPoint = when (locationAny) {
+                                        is GeoPoint -> OSMGeoPoint(locationAny.latitude, locationAny.longitude)
                                         is Map<*, *> -> {
                                             val lat = (locationAny["latitude"] ?: locationAny["lat"]) as? Double ?: 0.0
                                             val lng = (locationAny["longitude"] ?: locationAny["lng"]) as? Double ?: 0.0
-                                            com.google.android.gms.maps.model.LatLng(lat, lng)
+                                            OSMGeoPoint(lat, lng)
                                         }
-                                        else -> com.google.android.gms.maps.model.LatLng(0.0,0.0)
+                                        else -> OSMGeoPoint(0.0, 0.0)
                                     }
-                                    Stop(name,address,latLng)
+                                    Stop(name, address, osmGeoPoint)
                                 } catch (e: Exception) { null }
                             }
                             else -> emptyList()
@@ -232,7 +233,6 @@ class DeliveryViewModel : ViewModel() {
         val target = _deliveries.value.find { it.id == deliveryId } ?: return
         if (orderId in target.assignedOrders) return
 
-        // Get the order to find receiver information
         val order = _orders.value.find { it.id == orderId }
         if (order == null) {
             Log.w("DeliveryViewModel", "Order $orderId not found when assigning to delivery")
@@ -243,7 +243,6 @@ class DeliveryViewModel : ViewModel() {
         println("DeliveryViewModel Debug - Assigning order $orderId to delivery $deliveryId")
         println("DeliveryViewModel Debug - Order receiver ID: ${order.receiverId}")
 
-        // Create a new stop for this order's receiver
         db.collection("customers").document(order.receiverId).get()
             .addOnSuccessListener { customerDoc ->
                 println("DeliveryViewModel Debug - Customer document fetch successful for ${order.receiverId}")
@@ -252,8 +251,6 @@ class DeliveryViewModel : ViewModel() {
                     println("DeliveryViewModel Debug - Customer document exists. All fields: ${customerDoc.data}")
 
                     val receiverName = customerDoc.getString("name") ?: "Unknown Receiver"
-
-                    // Try multiple possible address field names
                     val receiverAddress = customerDoc.getString("address")
                         ?: customerDoc.getString("Address")
                         ?: customerDoc.getString("location")
@@ -267,64 +264,53 @@ class DeliveryViewModel : ViewModel() {
                     println("  - Name: '$receiverName'")
                     println("  - Address: '$receiverAddress'")
 
-                    // Check if we found a valid address
                     if (receiverAddress == "Address not available") {
                         println("DeliveryViewModel Debug - WARNING: No address field found for customer ${order.receiverId}")
                         println("DeliveryViewModel Debug - Available fields: ${customerDoc.data?.keys}")
-                        println("DeliveryViewModel Debug - You may need to add an 'address' field to your customer documents")
                     }
 
-                    // Create coordinates for the address
-                    // Using more realistic coordinates around KL area
+                    // 使用 OSMDroid GeoPoint 创建坐标
                     val baseLatKL = 3.1390
                     val baseLngKL = 101.6869
-                    val randomOffset = 0.03 // Smaller offset for more realistic spread
+                    val randomOffset = 0.03
                     val randomLat = baseLatKL + (Math.random() - 0.5) * randomOffset
                     val randomLng = baseLngKL + (Math.random() - 0.5) * randomOffset
 
                     val newStop = Stop(
                         name = receiverName,
                         address = receiverAddress,
-                        location = com.google.android.gms.maps.model.LatLng(randomLat, randomLng)
+                        location = OSMGeoPoint(randomLat, randomLng) // ✅ 使用 OSM GeoPoint
                     )
 
-                    println("DeliveryViewModel Debug - Created stop:")
+                    println("DeliveryViewModel Debug - Created OSM stop:")
                     println("  - Name: '${newStop.name}'")
                     println("  - Address: '${newStop.address}'")
-                    println("  - Location: (${newStop.location.latitude}, ${newStop.location.longitude})")
+                    println("  - OSM Location: (${newStop.location.latitude}, ${newStop.location.longitude})")
 
-                    // Check if this stop already exists (same receiver)
                     val existingStops = target.stops.toMutableList()
                     val stopExists = existingStops.any { it.name == receiverName }
 
                     if (!stopExists) {
                         existingStops.add(newStop)
-                        println("DeliveryViewModel Debug - Added stop to delivery. Total stops: ${existingStops.size}")
+                        println("DeliveryViewModel Debug - Added OSM stop to delivery. Total stops: ${existingStops.size}")
                     } else {
-                        println("DeliveryViewModel Debug - Stop for receiver '$receiverName' already exists, not adding duplicate")
+                        println("DeliveryViewModel Debug - Stop for receiver '$receiverName' already exists")
                     }
 
-                    // Update delivery with new order and stop
                     val updatedDelivery = target.copy(
                         assignedOrders = target.assignedOrders + orderId,
                         stops = existingStops
                     )
 
-                    println("DeliveryViewModel Debug - Updating delivery:")
-                    println("  - Total assigned orders: ${updatedDelivery.assignedOrders.size}")
-                    println("  - Total stops: ${updatedDelivery.stops.size}")
-
                     updateDelivery(updatedDelivery)
-                    Log.d("DeliveryViewModel", "Order $orderId assigned to delivery $deliveryId with receiver stop")
+                    Log.d("DeliveryViewModel", "Order $orderId assigned to delivery $deliveryId with OSM receiver stop")
                 } else {
-                    Log.w("DeliveryViewModel", "Customer ${order.receiverId} not found in Firebase")
-                    println("DeliveryViewModel Debug - Customer document ${order.receiverId} does not exist in customers collection!")
+                    println("DeliveryViewModel Debug - Customer document ${order.receiverId} does not exist!")
 
-                    // Create a placeholder stop with the receiver ID as name
                     val placeholderStop = Stop(
                         name = "Customer: ${order.receiverId}",
                         address = "Customer address not found in database",
-                        location = com.google.android.gms.maps.model.LatLng(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
+                        location = OSMGeoPoint(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
                     )
 
                     val existingStops = target.stops.toMutableList()
@@ -339,13 +325,11 @@ class DeliveryViewModel : ViewModel() {
             }
             .addOnFailureListener { e ->
                 Log.e("DeliveryViewModel", "Error fetching customer ${order.receiverId}: ${e.message}")
-                println("DeliveryViewModel Debug - Failed to fetch customer ${order.receiverId}: ${e.message}")
 
-                // Create a placeholder stop even on failure
                 val errorStop = Stop(
                     name = "Customer: ${order.receiverId}",
                     address = "Error loading customer data: ${e.message}",
-                    location = com.google.android.gms.maps.model.LatLng(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
+                    location = OSMGeoPoint(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
                 )
 
                 val existingStops = target.stops.toMutableList()

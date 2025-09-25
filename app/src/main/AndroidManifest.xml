@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- OSMDroid permissions -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -17,7 +20,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LogisticManagementApplication">
 
-        <!-- Add Google Maps API key -->
+        <!-- Google Maps API key (keeping for external navigation) -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBOti4mM-6x9WDnZIjIeyPU21OH_SJazSw" />
@@ -29,10 +32,17 @@
             android:theme="@style/Theme.LogisticManagementApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 新增：OSMDroid 地图 Activity -->
+        <activity
+            android:name="com.example.delivery_and_transportation_management.ui.screen.DriverMapActivity"
+            android:exported="false"
+            android:label="Delivery Route Map"
+            android:theme="@style/Theme.LogisticManagementApplication" />
+
     </application>
 
 </manifest>

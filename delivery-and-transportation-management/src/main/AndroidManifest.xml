@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <application android:theme="@style/Theme.LogisticManagementApplication">
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_API_KEY_HERE" />
-    </application>
+    <!-- 网络权限（地图瓦片加载需要） -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- 如果要显示用户当前位置 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!-- OSMDroid 默认会缓存瓦片，所以需要存储权限（旧版 Android 用到） -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+    <application
+        android:name=".MyApp"
+        android:theme="@style/Theme.LogisticManagementApplication">
+
+        <!-- 🚫 Google Maps 的 meta-data 删除了 -->
+
+    </application>
 </manifest>
