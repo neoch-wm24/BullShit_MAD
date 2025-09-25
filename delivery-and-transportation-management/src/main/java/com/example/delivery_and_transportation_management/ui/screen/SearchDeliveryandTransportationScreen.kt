@@ -238,9 +238,9 @@ fun SearchDeliveryandTransportationScreen(
 fun PreviewSearchDeliveryandTransportationScreen() {
     val navController = rememberNavController()
     val fakeDeliveries = listOf(
-        Delivery(id = "1", driverId = "D001", plateNumber = "ABC123", driverName = "John Doe", type = "Van", date = "2025-09-15", stops = emptyList(), assignedOrders = emptyList()),
-        Delivery(id = "2", driverId = "D002", plateNumber = "XYZ789", driverName = "Alice Lee", type = "Truck", date = "2025-09-16", stops = emptyList(), assignedOrders = emptyList()),
-        Delivery(id = "3", driverId = "D003", plateNumber = "LMN456", driverName = "Bob Tan", type = "Bike", date = "2025-09-17", stops = emptyList(), assignedOrders = emptyList())
+        Delivery(id = "1", employeeID = "D001", plateNumber = "ABC123", driverName = "John Doe", type = "Van", date = "2025-09-15", stops = emptyList(), assignedOrders = emptyList()),
+        Delivery(id = "2", employeeID = "D002", plateNumber = "XYZ789", driverName = "Alice Lee", type = "Truck", date = "2025-09-16", stops = emptyList(), assignedOrders = emptyList()),
+        Delivery(id = "3", employeeID = "D003", plateNumber = "LMN456", driverName = "Bob Tan", type = "Bike", date = "2025-09-17", stops = emptyList(), assignedOrders = emptyList())
     )
     SearchDeliveryandTransportationScreen(
         navController = navController,

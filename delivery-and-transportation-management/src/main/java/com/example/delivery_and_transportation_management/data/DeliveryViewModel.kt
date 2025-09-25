@@ -7,6 +7,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.example.order_management.ui.screen.Order
+import com.google.firebase.firestore.GeoPoint
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
 
 // 扩展 Order 数据类，包含客户名称
 data class OrderWithCustomerNames(
@@ -18,63 +22,122 @@ data class OrderWithCustomerNames(
 class DeliveryViewModel : ViewModel() {
     private val db = FirebaseFirestore.getInstance()
 
-    // deliveries
     private val _deliveries = MutableStateFlow<List<Delivery>>(emptyList())
     val deliveries: StateFlow<List<Delivery>> = _deliveries.asStateFlow()
 
-    // 原始订单数据
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
-    // 👆 新增：包含客户名称的订单
     private val _ordersWithCustomerNames = MutableStateFlow<List<OrderWithCustomerNames>>(emptyList())
     val ordersWithCustomerNames: StateFlow<List<OrderWithCustomerNames>> = _ordersWithCustomerNames.asStateFlow()
 
-    // 客户信息缓存
-    private val _customers = MutableStateFlow<Map<String, String>>(emptyMap()) // ID -> Name
+    private val _customers = MutableStateFlow<Map<String, String>>(emptyMap())
     val customers: StateFlow<Map<String, String>> = _customers.asStateFlow()
 
+    private val canonicalDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply { isLenient = false }
+    private val parsePatterns = listOf(
+        "yyyy-MM-dd",
+        "d-M-yyyy",
+        "dd-MM-yyyy",
+        "d/MM/yyyy",
+        "dd/MM/yyyy",
+        "d-M-yy",
+        "dd-MM-yy",
+        "yyyy/M/d",
+        "yyyy/M/dd",
+        "yyyy/MM/d",
+        "yyyy/MM/dd"
+    )
+
+    private fun normalizeDate(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isBlank()) return ""
+        // Already canonical
+        if (trimmed.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) return trimmed
+        for (p in parsePatterns) {
+            try {
+                val f = SimpleDateFormat(p, Locale.getDefault()).apply { isLenient = false }
+                val date: Date = f.parse(trimmed) ?: continue
+                return canonicalDateFormat.format(date)
+            } catch (_: Exception) { }
+        }
+        return trimmed // fallback (won't match unless user picks same raw string)
+    }
+
     init {
-        // 🔹 首先加载客户数据
         loadCustomers()
 
-        // 实时监听 deliveries
         db.collection("deliveries")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("DeliveryViewModel", "Error listening to deliveries: ${error.message}")
-                    println("DeliveryViewModel Firebase Error: ${error.message}")
                     return@addSnapshotListener
                 }
-
-                val list = snapshot?.toObjects(Delivery::class.java) ?: emptyList()
-                Log.d("DeliveryViewModel", "Loaded ${list.size} deliveries")
-                println("DeliveryViewModel Firebase Debug - Loaded ${list.size} deliveries from Firebase")
-
-                // Enhanced debugging for each delivery
-                list.forEachIndexed { index, delivery ->
-                    println("DeliveryViewModel Firebase Debug - Delivery $index: id='${delivery.id}', driverId='${delivery.driverId}', driverName='${delivery.driverName}', date='${delivery.date}', plateNumber='${delivery.plateNumber}', assignedOrders=${delivery.assignedOrders.size}")
+                if (snapshot == null) {
+                    _deliveries.value = emptyList()
+                    return@addSnapshotListener
                 }
-
-                if (list.isEmpty()) {
-                    println("DeliveryViewModel Firebase Debug - NO DELIVERIES FOUND IN FIREBASE!")
-                    println("DeliveryViewModel Firebase Debug - Check if:")
-                    println("DeliveryViewModel Firebase Debug - 1. Deliveries collection exists in Firestore")
-                    println("DeliveryViewModel Firebase Debug - 2. Data was saved correctly")
-                    println("DeliveryViewModel Firebase Debug - 3. Firebase rules allow reading")
+                val list = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val rawDocId = doc.id
+                        val id = (doc.getString("id") ?: rawDocId)
+                        val employeeIdValue = (doc.getString("employeeID")
+                            ?: doc.getString("driverId")
+                            ?: doc.getString("driver_id")
+                            ?: "").trim().ifBlank { rawDocId } // final fallback
+                        val driverName = doc.getString("driverName") ?: doc.getString("name") ?: ""
+                        val rawDate = doc.getString("date") ?: ""
+                        val normalized = normalizeDate(rawDate)
+                        // Auto-fix Firestore date if normalization changed it (non-blocking)
+                        if (rawDate.isNotBlank() && normalized != rawDate) {
+                            doc.reference.update("date", normalized)
+                        }
+                        val plateNumber = doc.getString("plateNumber") ?: doc.getString("plate_number")
+                        val type = doc.getString("type") ?: ""
+                        val assignedOrders = (doc.get("assignedOrders") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                        val stopsRaw = doc.get("stops")
+                        val stops = when (stopsRaw) {
+                            is List<*> -> stopsRaw.mapNotNull { stopAny ->
+                                try {
+                                    val map = stopAny as? Map<*, *> ?: return@mapNotNull null
+                                    val name = map["name"] as? String ?: ""
+                                    val address = map["address"] as? String ?: ""
+                                    val locationAny = map["location"]
+                                    val latLng = when (locationAny) {
+                                        is GeoPoint -> com.google.android.gms.maps.model.LatLng(locationAny.latitude, locationAny.longitude)
+                                        is Map<*, *> -> {
+                                            val lat = (locationAny["latitude"] ?: locationAny["lat"]) as? Double ?: 0.0
+                                            val lng = (locationAny["longitude"] ?: locationAny["lng"]) as? Double ?: 0.0
+                                            com.google.android.gms.maps.model.LatLng(lat, lng)
+                                        }
+                                        else -> com.google.android.gms.maps.model.LatLng(0.0,0.0)
+                                    }
+                                    Stop(name,address,latLng)
+                                } catch (e: Exception) { null }
+                            }
+                            else -> emptyList()
+                        }
+                        Delivery(
+                            id = id,
+                            employeeID = employeeIdValue,
+                            driverName = driverName,
+                            type = type,
+                            date = normalized,
+                            plateNumber = plateNumber,
+                            stops = stops,
+                            assignedOrders = assignedOrders
+                        )
+                    } catch (e: Exception) {
+                        Log.e("DeliveryViewModel","Mapping error doc ${doc.id}: ${e.message}")
+                        null
+                    }
                 }
-
                 _deliveries.value = list
             }
 
-        // 实时监听 orders 集合
         db.collection("orders")
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("DeliveryViewModel", "Error listening to orders: ${error.message}")
-                    return@addSnapshotListener
-                }
-
+                if (error != null) { Log.e("DeliveryViewModel","Error listening to orders: ${error.message}"); return@addSnapshotListener }
                 val manualMappedList = snapshot?.documents?.mapNotNull { doc ->
                     try {
                         Order(
@@ -82,165 +145,238 @@ class DeliveryViewModel : ViewModel() {
                             senderId = doc.getString("sender_id") ?: "",
                             receiverId = doc.getString("receiver_id") ?: "",
                             parcelIds = (doc.get("parcel_ids") as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
-                            totalWeight = (doc.getDouble("total_weight") ?: 0.0),
-                            cost = (doc.getDouble("cost") ?: 0.0)
+                            totalWeight = doc.getDouble("total_weight") ?: 0.0,
+                            cost = doc.getDouble("cost") ?: 0.0
                         )
-                    } catch (e: Exception) {
-                        Log.e("DeliveryViewModel", "Error mapping document ${doc.id}: ${e.message}")
-                        null
-                    }
+                    } catch (e: Exception) { null }
                 } ?: emptyList()
-
                 _orders.value = manualMappedList
-                Log.d("DeliveryViewModel", "Loaded ${manualMappedList.size} orders")
-
-                // 🔹 更新带客户名称的订单列表
                 updateOrdersWithCustomerNames()
             }
     }
 
-    // 🔹 加载客户数据
     private fun loadCustomers() {
         db.collection("customers")
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("DeliveryViewModel", "Error listening to customers: ${error.message}")
-                    return@addSnapshotListener
-                }
-
-                val customerMap = mutableMapOf<String, String>()
-                snapshot?.documents?.forEach { doc ->
-                    val id = doc.getString("id") ?: doc.id
-                    val name = doc.getString("name") ?: "Unknown Customer"
-                    customerMap[id] = name
-                }
-
-                _customers.value = customerMap
-                Log.d("DeliveryViewModel", "Loaded ${customerMap.size} customers")
-
-                // 🔹 客户数据更新后，重新计算订单显示
+                if (error != null) { Log.e("DeliveryViewModel","Error listening to customers: ${error.message}"); return@addSnapshotListener }
+                val map = snapshot?.documents?.associate { d ->
+                    val id = d.getString("id") ?: d.id
+                    val name = d.getString("name") ?: "Unknown Customer"
+                    id to name
+                } ?: emptyMap()
+                _customers.value = map
                 updateOrdersWithCustomerNames()
             }
     }
 
-    // 🔹 更新带客户名称的订单列表
     private fun updateOrdersWithCustomerNames() {
-        val orders = _orders.value
         val customers = _customers.value
-
-        if (orders.isEmpty()) {
-            _ordersWithCustomerNames.value = emptyList()
-            return
-        }
-
-        val ordersWithNames = orders.map { order ->
+        _ordersWithCustomerNames.value = _orders.value.map { o ->
             OrderWithCustomerNames(
-                order = order,
-                senderName = customers[order.senderId] ?: "Customer ID: ${order.senderId}",
-                receiverName = customers[order.receiverId] ?: "Customer ID: ${order.receiverId}"
+                order = o,
+                senderName = customers[o.senderId] ?: "Customer ID: ${o.senderId}",
+                receiverName = customers[o.receiverId] ?: "Customer ID: ${o.receiverId}"
             )
         }
-
-        _ordersWithCustomerNames.value = ordersWithNames
-        Log.d("DeliveryViewModel", "Updated ${ordersWithNames.size} orders with customer names")
     }
 
+    private fun deliveryToMap(delivery: Delivery): Map<String, Any?> = mapOf(
+        "id" to delivery.id,
+        // Store both for backward compatibility
+        "employeeID" to delivery.employeeID,
+        "driverId" to delivery.employeeID,
+        "driverName" to delivery.driverName,
+        "type" to delivery.type,
+        "date" to normalizeDate(delivery.date),
+        "plateNumber" to delivery.plateNumber,
+        "assignedOrders" to delivery.assignedOrders,
+        "stops" to delivery.stops.map { stop ->
+            mapOf(
+                "name" to stop.name,
+                "address" to stop.address,
+                "location" to mapOf(
+                    "latitude" to stop.location.latitude,
+                    "longitude" to stop.location.longitude
+                )
+            )
+        }
+    )
+
     fun addDelivery(delivery: Delivery) {
-        // ✅ 保存到 Firestore，包括 assignedOrders 字段
-        db.collection("deliveries").document(delivery.id).set(delivery)
-            .addOnSuccessListener {
-                Log.d("DeliveryViewModel", "Delivery added successfully: ${delivery.id}")
-            }
-            .addOnFailureListener { e ->
-                Log.e("DeliveryViewModel", "Error adding delivery: ${e.message}")
-            }
+        val canon = delivery.copy(date = normalizeDate(delivery.date))
+        db.collection("deliveries").document(canon.id)
+            .set(deliveryToMap(canon))
+            .addOnFailureListener { e -> Log.e("DeliveryViewModel","Error adding delivery: ${e.message}") }
     }
 
     fun updateDelivery(updated: Delivery) {
-        // ✅ 保存更新后的 Delivery，包括 date 和 assignedOrders 字段
-        db.collection("deliveries").document(updated.id).set(updated)
-            .addOnSuccessListener {
-                Log.d("DeliveryViewModel", "Delivery updated successfully: ${updated.id}")
-            }
-            .addOnFailureListener { e ->
-                Log.e("DeliveryViewModel", "Error updating delivery: ${e.message}")
-            }
+        val canon = updated.copy(date = normalizeDate(updated.date))
+        db.collection("deliveries").document(canon.id)
+            .update(deliveryToMap(canon))
+            .addOnFailureListener { e -> Log.e("DeliveryViewModel","Error updating delivery: ${e.message}") }
     }
 
     fun updateDeliveryDate(deliveryId: String, newDate: String) {
-        // ✅ 找到对应 delivery 并更新日期，同时保存到 Firestore
-        val currentDeliveries = _deliveries.value
-        val deliveryToUpdate = currentDeliveries.find { it.id == deliveryId }
-
-        if (deliveryToUpdate != null) {
-            val updatedDelivery = deliveryToUpdate.copy(date = newDate)
-            updateDelivery(updatedDelivery)
-        } else {
-            Log.w("DeliveryViewModel", "Delivery not found: $deliveryId")
-        }
+        val target = _deliveries.value.find { it.id == deliveryId } ?: return
+        val canonDate = normalizeDate(newDate)
+        updateDelivery(target.copy(date = canonDate))
     }
 
     fun removeDeliveries(toRemove: Set<Delivery>) {
-        toRemove.forEach { delivery ->
-            db.collection("deliveries").document(delivery.id).delete()
-                .addOnSuccessListener {
-                    Log.d("DeliveryViewModel", "Delivery removed: ${delivery.id}")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("DeliveryViewModel", "Error removing delivery: ${e.message}")
-                }
+        toRemove.forEach { d ->
+            db.collection("deliveries").document(d.id).delete()
         }
     }
 
-    // ✅ 新增：将单个订单分配给某个 delivery
     fun assignOrderToDelivery(deliveryId: String, orderId: String) {
-        val currentDeliveries = _deliveries.value
-        val deliveryToUpdate = currentDeliveries.find { it.id == deliveryId }
+        val target = _deliveries.value.find { it.id == deliveryId } ?: return
+        if (orderId in target.assignedOrders) return
 
-        if (deliveryToUpdate != null) {
-            val currentAssignedOrders = deliveryToUpdate.assignedOrders.toMutableList()
-            if (!currentAssignedOrders.contains(orderId)) {
-                currentAssignedOrders.add(orderId)
-                val updatedDelivery = deliveryToUpdate.copy(assignedOrders = currentAssignedOrders)
-                updateDelivery(updatedDelivery)
-                Log.d("DeliveryViewModel", "Order $orderId assigned to delivery ${deliveryId}")
-            } else {
-                Log.w("DeliveryViewModel", "Order $orderId already assigned to delivery ${deliveryId}")
-            }
-        } else {
-            Log.w("DeliveryViewModel", "Delivery not found: $deliveryId")
+        // Get the order to find receiver information
+        val order = _orders.value.find { it.id == orderId }
+        if (order == null) {
+            Log.w("DeliveryViewModel", "Order $orderId not found when assigning to delivery")
+            println("DeliveryViewModel Debug - Order $orderId not found in orders list")
+            return
         }
+
+        println("DeliveryViewModel Debug - Assigning order $orderId to delivery $deliveryId")
+        println("DeliveryViewModel Debug - Order receiver ID: ${order.receiverId}")
+
+        // Create a new stop for this order's receiver
+        db.collection("customers").document(order.receiverId).get()
+            .addOnSuccessListener { customerDoc ->
+                println("DeliveryViewModel Debug - Customer document fetch successful for ${order.receiverId}")
+
+                if (customerDoc.exists()) {
+                    println("DeliveryViewModel Debug - Customer document exists. All fields: ${customerDoc.data}")
+
+                    val receiverName = customerDoc.getString("name") ?: "Unknown Receiver"
+
+                    // Try multiple possible address field names
+                    val receiverAddress = customerDoc.getString("address")
+                        ?: customerDoc.getString("Address")
+                        ?: customerDoc.getString("location")
+                        ?: customerDoc.getString("Location")
+                        ?: customerDoc.getString("addr")
+                        ?: customerDoc.getString("street")
+                        ?: customerDoc.getString("full_address")
+                        ?: "Address not available"
+
+                    println("DeliveryViewModel Debug - Customer data retrieved:")
+                    println("  - Name: '$receiverName'")
+                    println("  - Address: '$receiverAddress'")
+
+                    // Check if we found a valid address
+                    if (receiverAddress == "Address not available") {
+                        println("DeliveryViewModel Debug - WARNING: No address field found for customer ${order.receiverId}")
+                        println("DeliveryViewModel Debug - Available fields: ${customerDoc.data?.keys}")
+                        println("DeliveryViewModel Debug - You may need to add an 'address' field to your customer documents")
+                    }
+
+                    // Create coordinates for the address
+                    // Using more realistic coordinates around KL area
+                    val baseLatKL = 3.1390
+                    val baseLngKL = 101.6869
+                    val randomOffset = 0.03 // Smaller offset for more realistic spread
+                    val randomLat = baseLatKL + (Math.random() - 0.5) * randomOffset
+                    val randomLng = baseLngKL + (Math.random() - 0.5) * randomOffset
+
+                    val newStop = Stop(
+                        name = receiverName,
+                        address = receiverAddress,
+                        location = com.google.android.gms.maps.model.LatLng(randomLat, randomLng)
+                    )
+
+                    println("DeliveryViewModel Debug - Created stop:")
+                    println("  - Name: '${newStop.name}'")
+                    println("  - Address: '${newStop.address}'")
+                    println("  - Location: (${newStop.location.latitude}, ${newStop.location.longitude})")
+
+                    // Check if this stop already exists (same receiver)
+                    val existingStops = target.stops.toMutableList()
+                    val stopExists = existingStops.any { it.name == receiverName }
+
+                    if (!stopExists) {
+                        existingStops.add(newStop)
+                        println("DeliveryViewModel Debug - Added stop to delivery. Total stops: ${existingStops.size}")
+                    } else {
+                        println("DeliveryViewModel Debug - Stop for receiver '$receiverName' already exists, not adding duplicate")
+                    }
+
+                    // Update delivery with new order and stop
+                    val updatedDelivery = target.copy(
+                        assignedOrders = target.assignedOrders + orderId,
+                        stops = existingStops
+                    )
+
+                    println("DeliveryViewModel Debug - Updating delivery:")
+                    println("  - Total assigned orders: ${updatedDelivery.assignedOrders.size}")
+                    println("  - Total stops: ${updatedDelivery.stops.size}")
+
+                    updateDelivery(updatedDelivery)
+                    Log.d("DeliveryViewModel", "Order $orderId assigned to delivery $deliveryId with receiver stop")
+                } else {
+                    Log.w("DeliveryViewModel", "Customer ${order.receiverId} not found in Firebase")
+                    println("DeliveryViewModel Debug - Customer document ${order.receiverId} does not exist in customers collection!")
+
+                    // Create a placeholder stop with the receiver ID as name
+                    val placeholderStop = Stop(
+                        name = "Customer: ${order.receiverId}",
+                        address = "Customer address not found in database",
+                        location = com.google.android.gms.maps.model.LatLng(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
+                    )
+
+                    val existingStops = target.stops.toMutableList()
+                    existingStops.add(placeholderStop)
+
+                    val updatedDelivery = target.copy(
+                        assignedOrders = target.assignedOrders + orderId,
+                        stops = existingStops
+                    )
+                    updateDelivery(updatedDelivery)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("DeliveryViewModel", "Error fetching customer ${order.receiverId}: ${e.message}")
+                println("DeliveryViewModel Debug - Failed to fetch customer ${order.receiverId}: ${e.message}")
+
+                // Create a placeholder stop even on failure
+                val errorStop = Stop(
+                    name = "Customer: ${order.receiverId}",
+                    address = "Error loading customer data: ${e.message}",
+                    location = com.google.android.gms.maps.model.LatLng(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
+                )
+
+                val existingStops = target.stops.toMutableList()
+                existingStops.add(errorStop)
+
+                val updatedDelivery = target.copy(
+                    assignedOrders = target.assignedOrders + orderId,
+                    stops = existingStops
+                )
+                updateDelivery(updatedDelivery)
+            }
     }
 
-    // ✅ 新增：将多个订单分配给多个 deliveries（轮询分配）
     fun assignOrdersToDeliveries(deliveryIds: Set<String>, orderIds: Set<String>) {
-        val deliveryList = deliveryIds.toList()
-        val ordersList = orderIds.toList()
-        val numDeliveries = deliveryList.size
-
-        ordersList.forEachIndexed { index, orderId ->
-            val deliveryId = deliveryList[index % numDeliveries]
+        val dList = deliveryIds.toList()
+        if (dList.isEmpty()) return
+        orderIds.toList().forEachIndexed { index, orderId ->
+            val deliveryId = dList[index % dList.size]
             assignOrderToDelivery(deliveryId, orderId)
         }
     }
 
-    // ✅ 更新：从 delivery 内部获取已分配订单数量
-    fun getAssignedOrdersCount(deliveryId: String): Int {
-        return _deliveries.value.find { it.id == deliveryId }?.assignedOrders?.size ?: 0
-    }
+    fun getAssignedOrdersCount(deliveryId: String): Int =
+        _deliveries.value.find { it.id == deliveryId }?.assignedOrders?.size ?: 0
 
-    // ✅ 更新：从 delivery 内部获取已分配的订单ID
-    fun getAssignedOrderIds(deliveryId: String): Set<String> {
-        return _deliveries.value.find { it.id == deliveryId }?.assignedOrders?.toSet() ?: emptySet()
-    }
+    fun getAssignedOrderIds(deliveryId: String): Set<String> =
+        _deliveries.value.find { it.id == deliveryId }?.assignedOrders?.toSet() ?: emptySet()
 
-    // 🔹 获取所有已分配的订单ID（用于过滤未分配订单）
-    fun getAllAssignedOrderIds(): Set<String> {
-        return _deliveries.value.flatMap { it.assignedOrders }.toSet()
-    }
+    fun getAllAssignedOrderIds(): Set<String> =
+        _deliveries.value.flatMap { it.assignedOrders }.toSet()
 
-    // 🔹 根据客户ID获取名称
-    fun getCustomerName(customerId: String): String {
-        return _customers.value[customerId] ?: "Customer ID: $customerId"
-    }
+    fun getCustomerName(customerId: String): String =
+        _customers.value[customerId] ?: "Customer ID: $customerId"
 }

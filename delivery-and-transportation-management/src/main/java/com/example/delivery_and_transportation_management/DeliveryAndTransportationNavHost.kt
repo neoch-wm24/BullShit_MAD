@@ -10,6 +10,9 @@ import androidx.navigation.navArgument
 import androidx.compose.material3.Text
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.ui.screen.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 fun NavGraphBuilder.deliveryAndTransportationNavigation(
     navController: NavHostController,
@@ -127,13 +130,37 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
         )
     ) { backStackEntry ->
         val driverId = backStackEntry.arguments?.getString("driverId") ?: return@composable
-        val date = backStackEntry.arguments?.getString("date") ?: return@composable
+        val rawDate = backStackEntry.arguments?.getString("date") ?: return@composable
         val deliveries by deliveryViewModel.deliveries.collectAsState()
-        val stops = deliveries.filter { it.driverId == driverId && it.date == date }.flatMap { it.stops }
-        DriverDeliveryListScreen(
-            stops = stops,
-            onCheckout = { navController.popBackStack() }
+
+        // Normalize incoming date to yyyy-MM-dd (same as ViewModel canonical format)
+        val canonicalFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply { isLenient = false }
+        val parsePatterns = listOf(
+            "yyyy-MM-dd","d-M-yyyy","dd-MM-yyyy","d/MM/yyyy","dd/MM/yyyy","d-M-yy","dd-MM-yy","yyyy/M/d","yyyy/M/dd","yyyy/MM/d","yyyy/MM/dd"
         )
+        fun normalize(d:String): String {
+            val t = d.trim()
+            if (t.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) return t
+            for (p in parsePatterns) {
+                try { val f = SimpleDateFormat(p, Locale.getDefault()).apply { isLenient=false }; val dt:Date? = f.parse(t); if (dt!=null) return canonicalFmt.format(dt) } catch (_:Exception) {}
+            }
+            return t
+        }
+        val date = normalize(rawDate)
+        // Strict filter: same driver (employeeID) AND exact normalized date AND non-blank date
+        val stops = deliveries
+            .filter { d ->
+                val match = d.employeeID.equals(driverId, true) && d.date.isNotBlank() && d.date == date
+                if (!match && d.employeeID.equals(driverId, true)) {
+                    // Debug when driver matches but date not
+                    println("RouteMap Debug - Skipped delivery id=${d.id} employeeID=${d.employeeID} storedDate=${d.date} requestedDate=$date")
+                }
+                match
+            }
+            .flatMap { it.stops }
+
+        println("RouteMap Debug - driverId=$driverId requestedDate=$date -> stopsCount=${stops.size}")
+        DriverDeliveryListScreen(stops = stops)
     }
 
     // Legacy Driver route map (without date) for backward compatibility
@@ -146,11 +173,7 @@ fun NavGraphBuilder.deliveryAndTransportationNavigation(
         val driverId = backStackEntry.arguments?.getString("driverId") ?: return@composable
         val deliveries by deliveryViewModel.deliveries.collectAsState()
         val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-        val stops = deliveries.filter { it.driverId == driverId && it.date == today }.flatMap { it.stops }
-        DriverDeliveryListScreen(
-            stops = stops,
-            onCheckout = { navController.popBackStack() }
-        )
+        val stops = deliveries.filter { it.employeeID == driverId && it.date == today }.flatMap { it.stops }
+        DriverDeliveryListScreen(stops = stops)
     }
 }
-

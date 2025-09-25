@@ -30,15 +30,13 @@ fun DriverHome(
     employeeID: String,
     deliveryViewModel: DeliveryViewModel = viewModel()
 ) {
-    val today = remember {
-        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    }
+    val today = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
 
-    // Demo data with real Singapore addresses
+    // Demo data uses employeeID now
     val demoDeliveries = listOf(
         Delivery(
             id = "demo-delivery-1",
-            driverId = employeeID,
+            employeeID = employeeID,
             driverName = "John Doe",
             type = "Grocery",
             date = today,
@@ -55,6 +53,9 @@ fun DriverHome(
 
     // Collect deliveries from StateFlow
     val deliveries by deliveryViewModel.deliveries.collectAsState()
+
+    // Added: normalized employee id
+    val normalizedEmployeeId = remember(employeeID) { employeeID.trim() }
 
     var selectedDate by remember { mutableStateOf(today) }
     var showCalendar by remember { mutableStateOf(false) }
@@ -74,67 +75,45 @@ fun DriverHome(
         } else {
             println("DriverHome Debug - All deliveries in database:")
             deliveries.forEachIndexed { index, delivery ->
-                println("DriverHome Debug - Delivery $index: id='${delivery.id}', driverId='${delivery.driverId}', driverName='${delivery.driverName}', date='${delivery.date}', plateNumber='${delivery.plateNumber}', orders=${delivery.assignedOrders.size}")
+                println("DriverHome Debug - Delivery $index: id='${delivery.id}', employeeID='${delivery.employeeID}', driverName='${delivery.driverName}', date='${delivery.date}', plateNumber='${delivery.plateNumber}', orders=${delivery.assignedOrders.size}")
             }
         }
 
-        val actualDeliveries = deliveries.filter { it.driverId == employeeID }
-        println("DriverHome Debug - Deliveries for driver $employeeID: ${actualDeliveries.size}")
+        val mine = deliveries.filter { it.employeeID.equals(employeeID, true) }
+        println("DriverHome Debug - Deliveries for employeeID $employeeID: ${mine.size}")
 
-        if (actualDeliveries.isEmpty()) {
-            println("DriverHome Debug - NO DELIVERIES MATCH DRIVER ID: $employeeID")
-            val availableDriverIds = deliveries.map { it.driverId }.distinct().filter { it.isNotBlank() }
-            println("DriverHome Debug - Available driver IDs: $availableDriverIds")
-            if (availableDriverIds.isEmpty()) {
-                println("DriverHome Debug - All deliveries have empty driverId!")
-            }
+        if (mine.isEmpty()) {
+            val available = deliveries.map { it.employeeID }.distinct().filter { it.isNotBlank() }
+            println("DriverHome Debug - Available employeeIDs: $available")
         } else {
-            actualDeliveries.forEach { delivery ->
-                println("DriverHome Debug - Driver's delivery: id=${delivery.id}, date='${delivery.date}', plateNumber='${delivery.plateNumber}'")
-            }
+            mine.forEach { d -> println("DriverHome Debug - Driver's delivery: id=${d.id}, date='${d.date}', plateNumber='${d.plateNumber}'") }
         }
+    }
 
-        // Special debug for September 25th
-        if (selectedDate.contains("25") || selectedDate.contains("09")) {
-            println("DriverHome Debug - SEARCHING FOR SEPTEMBER 25th DATA...")
-            deliveries.forEach { delivery ->
-                if (delivery.date.contains("25") || delivery.date.contains("09") || delivery.date.contains("9")) {
-                    println("DriverHome Debug - Found potential Sept 25 delivery: date='${delivery.date}', driverId='${delivery.driverId}', driverName='${delivery.driverName}'")
+    // REPLACED actualDeliveries with enhanced matching (driverId OR delivery.id)
+    val actualDeliveries = remember(deliveries, normalizedEmployeeId) {
+        deliveries.filter { it.employeeID.trim().equals(normalizedEmployeeId, ignoreCase = true) }
+            .also { list ->
+                if (list.isEmpty()) {
+                    println("DriverHome Match Debug - NO deliveries matched employeeID '$normalizedEmployeeId'. Listing all loaded deliveries:")
+                    deliveries.forEachIndexed { index, d ->
+                        println("DriverHome Match Debug - [$index] id='${d.id}', employeeID='${d.employeeID}', date='${d.date}', orders=${d.assignedOrders.size}")
+                    }
+                } else {
+                    println("DriverHome Match Debug - Found ${list.size} deliveries for employeeID '$normalizedEmployeeId'")
                 }
             }
-        }
     }
 
-    val actualDeliveries = deliveries.filter { it.driverId == employeeID }
-
-    // Enhanced date filtering to handle multiple formats
-    val currentDateDeliveries = actualDeliveries.filter { delivery ->
-        val deliveryDate = delivery.date
-        val isMatch = when {
-            // Exact match
-            deliveryDate == selectedDate -> true
-            // Empty date matches today
-            deliveryDate.isBlank() && selectedDate == today -> true
-            // Handle September 25th in various formats
-            (selectedDate.contains("25") && selectedDate.contains("09")) && (
-                deliveryDate == "25-9-2025" ||
-                deliveryDate == "2025-9-25" ||
-                deliveryDate == "25/9/2025" ||
-                deliveryDate == "25-09-2025" ||
-                deliveryDate == "2025/09/25" ||
-                (deliveryDate.contains("25") && (deliveryDate.contains("9") || deliveryDate.contains("09")))
-            ) -> true
-            else -> false
+    // STRICT date filtering: only exact yyyy-MM-dd match (dates already normalized in ViewModel)
+    val currentDateDeliveries = remember(actualDeliveries, selectedDate) {
+        val filtered = actualDeliveries.filter { it.date == selectedDate }
+        println("DriverHome Date Filter - selectedDate=$selectedDate -> ${filtered.size} matches (strict)")
+        if (filtered.isEmpty() && actualDeliveries.isNotEmpty()) {
+            println("DriverHome Date Filter Debug - Available dates for this driver: " + actualDeliveries.map { it.date }.distinct())
         }
-
-        if (isMatch) {
-            println("DriverHome Debug - DATE MATCH FOUND: delivery.date='$deliveryDate' matches selectedDate='$selectedDate'")
-        }
-
-        isMatch
+        filtered
     }
-
-    println("DriverHome Debug - Final filtered deliveries for $selectedDate: ${currentDateDeliveries.size}")
 
     val uiDeliveries = when {
         // Show real deliveries if found

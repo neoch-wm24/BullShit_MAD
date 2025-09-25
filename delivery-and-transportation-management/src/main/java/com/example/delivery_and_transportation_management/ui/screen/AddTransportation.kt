@@ -24,16 +24,17 @@ fun AddTransportationScreen(
     deliveryViewModel: DeliveryViewModel = viewModel()
 ) {
     var plateNumber by rememberSaveable { mutableStateOf("") }
-    var driverList by remember { mutableStateOf(listOf<Pair<String, String>>()) } // (driverName, driverId)
-    var selectedDriver by rememberSaveable { mutableStateOf("") }
-    var selectedDriverId by rememberSaveable { mutableStateOf("") }
+    // (driverName, employeeID)
+    var driverList by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    var selectedDriverName by rememberSaveable { mutableStateOf("") }
+    var selectedEmployeeID by rememberSaveable { mutableStateOf("") }
     var expandedDriver by rememberSaveable { mutableStateOf(false) }
 
     var expandedType by rememberSaveable { mutableStateOf(false) }
     var selectedType by rememberSaveable { mutableStateOf("Car") }
     val vehicleTypes = listOf("Car", "Van", "Truck", "Container Truck")
 
-    // 加载司机 - Get both name and ID
+    // Load drivers (role == driver) retrieving name + employeeID
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance()
             .collection("users")
@@ -41,20 +42,16 @@ fun AddTransportationScreen(
             .get()
             .addOnSuccessListener { snapshot ->
                 driverList = snapshot.documents.mapNotNull { doc ->
-                    val name = doc.getString("name")
-                    val id = doc.getString("id") ?: doc.id
-                    if (name != null) Pair(name, id) else null
+                    val name = doc.getString("name") ?: return@mapNotNull null
+                    val employeeID = doc.getString("employeeID") ?: return@mapNotNull null
+                    name to employeeID
                 }
             }
-            .addOnFailureListener {
-                driverList = emptyList()
-            }
+            .addOnFailureListener { driverList = emptyList() }
     }
 
-    fun isValidPlateNumber(plate: String): Boolean {
-        val regex = Regex("^[A-Za-z]{1,3}[0-9]{1,4}$")
-        return plate.matches(regex)
-    }
+    fun isValidPlateNumber(plate: String): Boolean =
+        plate.matches(Regex("^[A-Za-z]{1,3}[0-9]{1,4}$"))
     val isPlateNumberValid = plateNumber.isBlank() || isValidPlateNumber(plateNumber)
 
     Column(
@@ -63,7 +60,6 @@ fun AddTransportationScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Plate 输入
         OutlinedTextField(
             value = plateNumber,
             onValueChange = { plateNumber = it.uppercase() },
@@ -81,31 +77,29 @@ fun AddTransportationScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Driver 下拉
+        // Driver dropdown (shows name but stores employeeID)
         ExposedDropdownMenuBox(
             expanded = expandedDriver,
             onExpandedChange = { expandedDriver = !expandedDriver }
         ) {
             OutlinedTextField(
-                value = selectedDriver,
+                value = selectedDriverName,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Driver") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDriver)
-                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDriver) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(
                 expanded = expandedDriver,
                 onDismissRequest = { expandedDriver = false }
             ) {
-                driverList.forEach { (driverName, driverId) ->
+                driverList.forEach { (name, employeeID) ->
                     DropdownMenuItem(
-                        text = { Text(driverName) },
+                        text = { Text(name) },
                         onClick = {
-                            selectedDriver = driverName
-                            selectedDriverId = driverId
+                            selectedDriverName = name
+                            selectedEmployeeID = employeeID
                             expandedDriver = false
                         }
                     )
@@ -113,7 +107,7 @@ fun AddTransportationScreen(
             }
         }
 
-        // Type 下拉
+        // Vehicle type dropdown
         ExposedDropdownMenuBox(
             expanded = expandedType,
             onExpandedChange = { expandedType = !expandedType }
@@ -123,9 +117,7 @@ fun AddTransportationScreen(
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("Vehicle Type") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType)
-                },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedType) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(
@@ -135,10 +127,7 @@ fun AddTransportationScreen(
                 vehicleTypes.forEach { type ->
                     DropdownMenuItem(
                         text = { Text(type) },
-                        onClick = {
-                            selectedType = type
-                            expandedType = false
-                        }
+                        onClick = { selectedType = type; expandedType = false }
                     )
                 }
             }
@@ -147,17 +136,17 @@ fun AddTransportationScreen(
         Button(
             onClick = {
                 if (plateNumber.isNotBlank() &&
-                    selectedDriver.isNotBlank() &&
-                    selectedDriverId.isNotBlank() &&
+                    selectedDriverName.isNotBlank() &&
+                    selectedEmployeeID.isNotBlank() &&
                     isValidPlateNumber(plateNumber)
                 ) {
                     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                     val newDelivery = Delivery(
                         id = UUID.randomUUID().toString(),
-                        driverId = selectedDriverId, // ✅ Now properly set with actual driver ID
-                        driverName = selectedDriver,
+                        employeeID = selectedEmployeeID,
+                        driverName = selectedDriverName,
                         type = selectedType,
-                        date = today, // ✅ Set to today's date so it shows in DriverHome
+                        date = today,
                         plateNumber = plateNumber,
                         stops = emptyList(),
                         assignedOrders = emptyList()
@@ -168,12 +157,10 @@ fun AddTransportationScreen(
             },
             modifier = Modifier.align(Alignment.End),
             enabled = plateNumber.isNotBlank() &&
-                    selectedDriver.isNotBlank() &&
-                    selectedDriverId.isNotBlank() &&
+                    selectedDriverName.isNotBlank() &&
+                    selectedEmployeeID.isNotBlank() &&
                     isValidPlateNumber(plateNumber)
-        ) {
-            Text("Save")
-        }
+        ) { Text("Save") }
     }
 }
 

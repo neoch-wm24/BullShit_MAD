@@ -10,7 +10,7 @@ data class Stop(
 
 data class Delivery(
     val id: String = "",              // unique delivery id
-    val driverId: String = "",         // newly added: driver user id
+    val employeeID: String = "",   // ✅ 新增字段
     val driverName: String = "",
     val type: String = "",   // e.g. Car, Van, Air, Sea
     val date: String = "",   // delivery date
