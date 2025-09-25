@@ -6,6 +6,8 @@ import android.preference.PreferenceManager
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -26,6 +28,7 @@ fun DriverDeliveryListScreen(
     stops: List<Stop>
 ) {
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
 
     // TARUMT Ground Floor - Block A (OSMDroid GeoPoint)
     val tarumt = GeoPoint(3.2155, 101.7280)
@@ -64,7 +67,11 @@ fun DriverDeliveryListScreen(
         combined
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+    ) {
         // Enhanced Info Card with debug information
         Card(
             modifier = Modifier
@@ -274,251 +281,255 @@ fun DriverDeliveryListScreen(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            itemsIndexed(routeStops) { index, stop ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = when (index) {
-                            0 -> MaterialTheme.colorScheme.primaryContainer
-                            routeStops.size - 1 -> MaterialTheme.colorScheme.secondaryContainer
-                            else -> MaterialTheme.colorScheme.surface
-                        }
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (index == 0) {
-                                        "🏢 START POINT"
-                                    } else {
-                                        "📦 DELIVERY STOP $index"
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                )
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = if (index == 0) {
-                                        "TARUMT Block A Ground Floor"
-                                    } else {
-                                        "Receiver: ${stop.name}"
-                                    },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                                )
-
-                                // Show if this is real or placeholder data
-                                if (index > 0) {
-                                    val isPlaceholder = stop.address.contains("Address not available") ||
-                                                       stop.address.contains("not found") ||
-                                                       stop.name.contains("Unknown") ||
-                                                       stop.name.contains("Customer:")
-                                    if (isPlaceholder) {
-                                        Text(
-                                            "⚠️ Placeholder data - check Firebase",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.error
-                                        )
-                                    } else {
-                                        Text(
-                                            "✅ Real receiver data (OSM)",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.Green
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (index > 0) {
-                                Card(
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.primary
-                                    ),
-                                    modifier = Modifier.size(width = 40.dp, height = 24.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = androidx.compose.ui.Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "#$index",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "📍 ${stop.address}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "🌐 OSM Coordinates: ${String.format("%.4f", stop.location.latitude)}, ${String.format("%.4f", stop.location.longitude)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        // Add estimated distance for delivery stops
-                        if (index > 0) {
-                            val prevStop = routeStops[index - 1]
-                            val distance = calculateDistance(prevStop.location, stop.location)
+        // Route Details Cards with proper spacing
+        routeStops.forEachIndexed { index, stop ->
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = when (index) {
+                        0 -> MaterialTheme.colorScheme.primaryContainer
+                        routeStops.size - 1 -> MaterialTheme.colorScheme.secondaryContainer
+                        else -> MaterialTheme.colorScheme.surface
+                    }
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (index == 0) {
+                                    "🏢 START POINT"
+                                } else {
+                                    "📦 DELIVERY STOP $index"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
 
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = "📏 Distance from previous: ~${String.format("%.1f", distance)} km",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.tertiary,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                text = if (index == 0) {
+                                    "TARUMT Block A Ground Floor"
+                                } else {
+                                    "Receiver: ${stop.name}"
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                             )
 
-                            val estimatedMinutes = (distance / 30.0) * 60
-                            Text(
-                                text = "⏱️ Estimated time: ~${String.format("%.0f", estimatedMinutes)} minutes",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
+                            // Show if this is real or placeholder data
+                            if (index > 0) {
+                                val isPlaceholder = stop.address.contains("Address not available") ||
+                                                   stop.address.contains("not found") ||
+                                                   stop.name.contains("Unknown") ||
+                                                   stop.name.contains("Customer:")
+                                if (isPlaceholder) {
+                                    Text(
+                                        "⚠️ Placeholder data - check Firebase",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                } else {
+                                    Text(
+                                        "✅ Real receiver data (OSM)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.Green
+                                    )
+                                }
+                            }
                         }
 
-                        // Add action buttons for delivery stops
                         if (index > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.size(width = 40.dp, height = 24.dp)
                             ) {
-                                AssistChip(
-                                    onClick = {
-                                        // 打开这个特定位置的详细地图
-                                        val intent = Intent(context, DriverMapActivity::class.java).apply {
-                                            putExtra("lat", stop.location.latitude)
-                                            putExtra("lng", stop.location.longitude)
-                                            putExtra("name", stop.name)
-                                            putExtra("address", stop.address)
-                                        }
-                                        context.startActivity(intent)
-                                    },
-                                    label = {
-                                        Text("🗺️ View on Map", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                )
-
-                                AssistChip(
-                                    onClick = {
-                                        // 导航到这个位置
-                                        val geoUri = android.net.Uri.parse(
-                                            "geo:${stop.location.latitude},${stop.location.longitude}?q=${stop.name}"
-                                        )
-                                        val intent = Intent(Intent.ACTION_VIEW, geoUri)
-                                        context.startActivity(intent)
-                                    },
-                                    label = {
-                                        Text("🧭 Navigate", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "#$index",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            }
 
-            // Summary item
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "📍 ${stop.address}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "🌐 OSM Coordinates: ${String.format("%.4f", stop.location.latitude)}, ${String.format("%.4f", stop.location.longitude)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Add estimated distance for delivery stops
+                    if (index > 0) {
+                        val prevStop = routeStops[index - 1]
+                        val distance = calculateDistance(prevStop.location, stop.location)
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         Text(
-                            "📊 OSM Route Summary",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            text = "📏 Distance from previous: ~${String.format("%.1f", distance)} km",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                         )
 
+                        val estimatedMinutes = (distance / 30.0) * 60
+                        Text(
+                            text = "⏱️ Estimated time: ~${String.format("%.0f", estimatedMinutes)} minutes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+
+                    // Add action buttons for delivery stops
+                    if (index > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
-                                Text("Total Stops: ${routeStops.size}")
-                                Text("Deliveries: ${stops.size}")
-                                Text("🆓 Using OpenStreetMap")
-
-                                if (stops.isEmpty()) {
-                                    Text(
-                                        "❌ No delivery addresses loaded",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                } else {
-                                    Text(
-                                        "✅ OSM coordinates loaded",
-                                        color = Color.Green
-                                    )
-                                }
-                            }
-
-                            Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                                val totalDistance = if (routeStops.size > 1) {
-                                    routeStops.zipWithNext().sumOf { (from, to) ->
-                                        calculateDistance(from.location, to.location)
+                            AssistChip(
+                                onClick = {
+                                    // 打开这个特定位置的详细地图
+                                    val intent = Intent(context, DriverMapActivity::class.java).apply {
+                                        putExtra("lat", stop.location.latitude)
+                                        putExtra("lng", stop.location.longitude)
+                                        putExtra("name", stop.name)
+                                        putExtra("address", stop.address)
                                     }
-                                } else 0.0
-
-                                Text("Total Distance: ${String.format("%.1f", totalDistance)} km")
-
-                                val totalTime = (totalDistance / 30.0) * 60 + (stops.size * 10)
-                                Text("Est. Time: ${String.format("%.0f", totalTime)} min")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Button(
-                            onClick = {
-                                val intent = Intent(context, DriverMapActivity::class.java).apply {
-                                    putExtra("employeeId", "current_driver")
-                                    putExtra("selectedDate", "current_date")
+                                    context.startActivity(intent)
+                                },
+                                label = {
+                                    Text("🗺️ View on Map", style = MaterialTheme.typography.labelSmall)
                                 }
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = stops.isNotEmpty()
-                        ) {
-                            Text(if (stops.isNotEmpty()) "🗺️ Open Full OSM Route Map" else "❌ No Delivery Stops")
+                            )
+
+                            AssistChip(
+                                onClick = {
+                                    // 导航到这个位置
+                                    val geoUri = android.net.Uri.parse(
+                                        "geo:${stop.location.latitude},${stop.location.longitude}?q=${stop.name}"
+                                    )
+                                    val intent = Intent(Intent.ACTION_VIEW, geoUri)
+                                    context.startActivity(intent)
+                                },
+                                label = {
+                                    Text("🧭 Navigate", style = MaterialTheme.typography.labelSmall)
+                                }
+                            )
                         }
                     }
                 }
             }
         }
+
+        // Summary item
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "📊 OSM Route Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Total Stops: ${routeStops.size}")
+                        Text("Deliveries: ${stops.size}")
+                        Text("🆓 Using OpenStreetMap")
+
+                        if (stops.isEmpty()) {
+                            Text(
+                                "❌ No delivery addresses loaded",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Text(
+                                "✅ OSM coordinates loaded",
+                                color = Color.Green
+                            )
+                        }
+                    }
+
+                    Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                        val totalDistance = if (routeStops.size > 1) {
+                            routeStops.zipWithNext().sumOf { (from, to) ->
+                                calculateDistance(from.location, to.location)
+                            }
+                        } else 0.0
+
+                        Text("Total Distance: ${String.format("%.1f", totalDistance)} km")
+
+                        val totalTime = (totalDistance / 30.0) * 60 + (stops.size * 10)
+                        Text("Est. Time: ${String.format("%.0f", totalTime)} min")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        val intent = Intent(context, DriverMapActivity::class.java).apply {
+                            putExtra("employeeId", "current_driver")
+                            putExtra("selectedDate", "current_date")
+                        }
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = stops.isNotEmpty()
+                ) {
+                    Text(if (stops.isNotEmpty()) "🗺️ Open Full OSM Route Map" else "❌ No Delivery Stops")
+                }
+            }
+        }
+
+        // Add bottom padding for better scrolling experience
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
