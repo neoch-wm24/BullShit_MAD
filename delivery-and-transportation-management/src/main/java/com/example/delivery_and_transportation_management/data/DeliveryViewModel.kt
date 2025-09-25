@@ -239,8 +239,17 @@ class DeliveryViewModel : ViewModel() {
     }
 
     fun assignOrderToDelivery(deliveryId: String, orderId: String) {
-        val target = _deliveries.value.find { it.id == deliveryId } ?: return
-        if (orderId in target.assignedOrders) return
+        // Get fresh state each time to avoid stale data
+        val target = _deliveries.value.find { it.id == deliveryId }
+        if (target == null) {
+            println("DeliveryViewModel Debug - ERROR: Delivery $deliveryId not found!")
+            return
+        }
+
+        if (orderId in target.assignedOrders) {
+            println("DeliveryViewModel Debug - Order $orderId already assigned to delivery $deliveryId")
+            return
+        }
 
         val order = _orders.value.find { it.id == orderId }
         if (order == null) {
@@ -251,10 +260,23 @@ class DeliveryViewModel : ViewModel() {
 
         println("DeliveryViewModel Debug - Assigning order $orderId to delivery $deliveryId")
         println("DeliveryViewModel Debug - Order receiver ID: ${order.receiverId}")
+        println("DeliveryViewModel Debug - Current assigned orders for delivery: ${target.assignedOrders}")
 
         db.collection("customers").document(order.receiverId).get()
             .addOnSuccessListener { customerDoc ->
                 println("DeliveryViewModel Debug - Customer document fetch successful for ${order.receiverId}")
+
+                // Re-fetch delivery state to ensure we have the latest data
+                val currentTarget = _deliveries.value.find { it.id == deliveryId }
+                if (currentTarget == null) {
+                    println("DeliveryViewModel Debug - ERROR: Delivery $deliveryId disappeared during assignment!")
+                    return@addOnSuccessListener
+                }
+
+                if (orderId in currentTarget.assignedOrders) {
+                    println("DeliveryViewModel Debug - Order $orderId already assigned during async operation")
+                    return@addOnSuccessListener
+                }
 
                 if (customerDoc.exists()) {
                     println("DeliveryViewModel Debug - Customer document exists. All fields: ${customerDoc.data}")
@@ -288,7 +310,7 @@ class DeliveryViewModel : ViewModel() {
                     val newStop = Stop(
                         name = receiverName,
                         address = receiverAddress,
-                        location = OSMGeoPoint(randomLat, randomLng) // ✅ 使用 OSM GeoPoint
+                        location = OSMGeoPoint(randomLat, randomLng)
                     )
 
                     println("DeliveryViewModel Debug - Created OSM stop:")
@@ -296,7 +318,7 @@ class DeliveryViewModel : ViewModel() {
                     println("  - Address: '${newStop.address}'")
                     println("  - OSM Location: (${newStop.location.latitude}, ${newStop.location.longitude})")
 
-                    val existingStops = target.stops.toMutableList()
+                    val existingStops = currentTarget.stops.toMutableList()
                     val stopExists = existingStops.any { it.name == receiverName }
 
                     if (!stopExists) {
@@ -306,27 +328,30 @@ class DeliveryViewModel : ViewModel() {
                         println("DeliveryViewModel Debug - Stop for receiver '$receiverName' already exists")
                     }
 
-                    val updatedDelivery = target.copy(
-                        assignedOrders = target.assignedOrders + orderId,
+                    val updatedDelivery = currentTarget.copy(
+                        assignedOrders = currentTarget.assignedOrders + orderId,
                         stops = existingStops
                     )
 
+                    println("DeliveryViewModel Debug - Updating delivery with ${updatedDelivery.assignedOrders.size} orders")
                     updateDelivery(updatedDelivery)
                     Log.d("DeliveryViewModel", "Order $orderId assigned to delivery $deliveryId with OSM receiver stop")
                 } else {
                     println("DeliveryViewModel Debug - Customer document ${order.receiverId} does not exist!")
 
+                    val currentTarget = _deliveries.value.find { it.id == deliveryId } ?: return@addOnSuccessListener
+
                     val placeholderStop = Stop(
                         name = "Customer: ${order.receiverId}",
-                        address = "Customer address not found in database",
+                        address = "",
                         location = OSMGeoPoint(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
                     )
 
-                    val existingStops = target.stops.toMutableList()
+                    val existingStops = currentTarget.stops.toMutableList()
                     existingStops.add(placeholderStop)
 
-                    val updatedDelivery = target.copy(
-                        assignedOrders = target.assignedOrders + orderId,
+                    val updatedDelivery = currentTarget.copy(
+                        assignedOrders = currentTarget.assignedOrders + orderId,
                         stops = existingStops
                     )
                     updateDelivery(updatedDelivery)
@@ -335,17 +360,19 @@ class DeliveryViewModel : ViewModel() {
             .addOnFailureListener { e ->
                 Log.e("DeliveryViewModel", "Error fetching customer ${order.receiverId}: ${e.message}")
 
+                val currentTarget = _deliveries.value.find { it.id == deliveryId } ?: return@addOnFailureListener
+
                 val errorStop = Stop(
                     name = "Customer: ${order.receiverId}",
                     address = "Error loading customer data: ${e.message}",
                     location = OSMGeoPoint(3.1390 + Math.random() * 0.01, 101.6869 + Math.random() * 0.01)
                 )
 
-                val existingStops = target.stops.toMutableList()
+                val existingStops = currentTarget.stops.toMutableList()
                 existingStops.add(errorStop)
 
-                val updatedDelivery = target.copy(
-                    assignedOrders = target.assignedOrders + orderId,
+                val updatedDelivery = currentTarget.copy(
+                    assignedOrders = currentTarget.assignedOrders + orderId,
                     stops = existingStops
                 )
                 updateDelivery(updatedDelivery)
@@ -355,10 +382,41 @@ class DeliveryViewModel : ViewModel() {
     fun assignOrdersToDeliveries(deliveryIds: Set<String>, orderIds: Set<String>) {
         val dList = deliveryIds.toList()
         if (dList.isEmpty()) return
-        orderIds.toList().forEachIndexed { index, orderId ->
-            val deliveryId = dList[index % dList.size]
-            assignOrderToDelivery(deliveryId, orderId)
+
+        println("DeliveryViewModel Debug - Assigning ${orderIds.size} orders to ${dList.size} deliveries")
+        orderIds.forEachIndexed { index, orderId ->
+            println("DeliveryViewModel Debug - Processing order $orderId (${index + 1}/${orderIds.size})")
         }
+
+        // If only one delivery is selected, assign all orders to that delivery
+        if (dList.size == 1) {
+            val singleDeliveryId = dList.first()
+            println("DeliveryViewModel Debug - Single delivery mode: assigning all ${orderIds.size} orders to delivery $singleDeliveryId")
+
+            // Add delay between assignments to prevent race conditions
+            orderIds.forEachIndexed { index, orderId ->
+                println("DeliveryViewModel Debug - Assigning order $orderId to delivery $singleDeliveryId")
+
+                // Use a small delay to prevent concurrent modification issues
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    assignOrderToDelivery(singleDeliveryId, orderId)
+                }, (index * 200L)) // 200ms delay between each assignment
+            }
+        } else {
+            // Multiple deliveries selected - distribute orders evenly across them
+            val ordersList = orderIds.toList()
+            ordersList.forEachIndexed { index, orderId ->
+                val deliveryId = dList[index % dList.size]
+                println("DeliveryViewModel Debug - Distributing: Assigning order $orderId to delivery $deliveryId")
+
+                // Add delay for multiple deliveries too
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    assignOrderToDelivery(deliveryId, orderId)
+                }, (index * 200L))
+            }
+        }
+
+        println("DeliveryViewModel Debug - Scheduled assignment of all ${orderIds.size} orders")
     }
 
     fun getAssignedOrdersCount(deliveryId: String): Int =

@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -128,6 +129,7 @@ fun SearchDeliveryandTransportationScreen(
                                 delivery = delivery,
                                 selected = selected,
                                 multiSelect = isMultiSelectMode,
+                                navController = navController,
                                 onClick = {
                                     if (isMultiSelectMode) {
                                         selectedItems = if (selected) selectedItems - delivery else selectedItems + delivery
@@ -168,6 +170,7 @@ private fun DeliveryListItem(
     delivery: Delivery,
     selected: Boolean,
     multiSelect: Boolean,
+    navController: NavController,
     onClick: () -> Unit,
     onAssignedOrdersClick: () -> Unit
 ) {
@@ -177,6 +180,9 @@ private fun DeliveryListItem(
         multiSelect && selected -> MaterialTheme.colorScheme.primaryContainer
         else -> baseColor
     }
+
+    // State for showing order selection dialog
+    var showOrderDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -218,10 +224,21 @@ private fun DeliveryListItem(
             if (assignedOrdersCount > 0) {
                 Spacer(Modifier.height(6.dp))
                 AssistChip(
-                    onClick = onAssignedOrdersClick,
+                    onClick = {
+                        when (assignedOrdersCount) {
+                            1 -> {
+                                // Single order - navigate directly
+                                onAssignedOrdersClick()
+                            }
+                            else -> {
+                                // Multiple orders - show dialog
+                                showOrderDialog = true
+                            }
+                        }
+                    },
                     label = {
                         Text(
-                            "📦 $assignedOrdersCount orders",
+                            "📦 $assignedOrdersCount ${if (assignedOrdersCount == 1) "order" else "orders"}",
                             style = MaterialTheme.typography.labelSmall
                         )
                     },
@@ -238,6 +255,63 @@ private fun DeliveryListItem(
                 )
             }
         }
+    }
+
+    // Order selection dialog for multiple orders
+    if (showOrderDialog && delivery.assignedOrders.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showOrderDialog = false },
+            title = {
+                Text("Select Order")
+            },
+            text = {
+                LazyColumn {
+                    items(delivery.assignedOrders) { orderId ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable {
+                                    showOrderDialog = false
+                                    // Navigate to the specific order detail
+                                    navController.navigate("OrderDetails/$orderId")
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Order #${orderId.take(12)}...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(
+                    onClick = { showOrderDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

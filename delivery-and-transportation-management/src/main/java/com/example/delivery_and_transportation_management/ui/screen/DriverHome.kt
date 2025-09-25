@@ -555,100 +555,86 @@ fun DeliveryCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Cache for recipient info: orderId -> (name, address) or null if not found
-                val firestore = remember { FirebaseFirestore.getInstance() }
-                val recipientCache = remember(delivery.id) { mutableStateMapOf<String, Pair<String, String>? >() }
-                val loadingSet = remember(delivery.id) { mutableStateSetOf<String>() }
+                // New approach: use existing orders + customers from ViewModel to get name directly by receiverId
+                val vm: DeliveryViewModel = viewModel()
+                val orders by vm.orders.collectAsState()
+                val customers by vm.customers.collectAsState()
 
-                fun ensureRecipient(orderId: String) {
-                    if (recipientCache.containsKey(orderId) || loadingSet.contains(orderId)) return
-                    loadingSet.add(orderId)
-                    firestore.collection("orders").document(orderId).get()
-                        .addOnSuccessListener { orderSnap ->
-                            val receiverId = orderSnap.getString("receiver_id")
-                            if (receiverId.isNullOrBlank()) {
-                                recipientCache[orderId] = null
-                                loadingSet.remove(orderId)
+                // receiverId -> address (lazy fetched) ; keep separate from name which comes from customers map
+                val addressCache = remember(delivery.id) { mutableStateMapOf<String, String?>() }
+                val addressLoading = remember(delivery.id) { mutableStateSetOf<String>() }
+                val firestore = remember { FirebaseFirestore.getInstance() }
+
+                fun ensureAddress(receiverId: String) {
+                    if (receiverId.isBlank()) return
+                    if (addressCache.containsKey(receiverId) || addressLoading.contains(receiverId)) return
+                    addressLoading.add(receiverId)
+                    // Try doc id first
+                    firestore.collection("customers").document(receiverId).get()
+                        .addOnSuccessListener { doc ->
+                            if (doc.exists()) {
+                                val addr = doc.getString("address") ?: "Address N/A"
+                                addressCache[receiverId] = addr
+                                addressLoading.remove(receiverId)
                             } else {
-                                firestore.collection("customers").document(receiverId).get()
-                                    .addOnSuccessListener { cust ->
-                                        if (cust.exists()) {
-                                            val name = cust.getString("name") ?: receiverId
-                                            val addr = cust.getString("address") ?: "Address N/A"
-                                            recipientCache[orderId] = name to addr
-                                        } else {
-                                            // fallback query by field 'id'
-                                            firestore.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
-                                                .addOnSuccessListener { q ->
-                                                    val doc = q.documents.firstOrNull()
-                                                    if (doc != null) {
-                                                        val name = doc.getString("name") ?: receiverId
-                                                        val addr = doc.getString("address") ?: "Address N/A"
-                                                        recipientCache[orderId] = name to addr
-                                                    } else {
-                                                        recipientCache[orderId] = null
-                                                    }
-                                                    loadingSet.remove(orderId)
-                                                }
-                                                .addOnFailureListener {
-                                                    recipientCache[orderId] = null
-                                                    loadingSet.remove(orderId)
-                                                }
-                                            return@addOnSuccessListener
-                                        }
-                                        loadingSet.remove(orderId)
+                                // fallback by field 'id'
+                                firestore.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
+                                    .addOnSuccessListener { q ->
+                                        val d = q.documents.firstOrNull()
+                                        val addr = d?.getString("address") ?: "Address N/A"
+                                        addressCache[receiverId] = if (d != null) addr else null
+                                        addressLoading.remove(receiverId)
                                     }
                                     .addOnFailureListener {
-                                        recipientCache[orderId] = null
-                                        loadingSet.remove(orderId)
+                                        addressCache[receiverId] = null
+                                        addressLoading.remove(receiverId)
                                     }
                             }
                         }
                         .addOnFailureListener {
-                            recipientCache[orderId] = null
-                            loadingSet.remove(orderId)
+                            addressCache[receiverId] = null
+                            addressLoading.remove(receiverId)
                         }
                 }
 
                 val previewOrders = delivery.assignedOrders.take(2)
                 previewOrders.forEach { oid ->
-                    LaunchedEffect(oid) { ensureRecipient(oid) }
-                    val info = recipientCache[oid]
-                    val isLoading = loadingSet.contains(oid) && info == null
+                    val order = orders.firstOrNull { it.id == oid }
+                    val receiverId = order?.receiverId.orEmpty()
+                    val name = if (receiverId.isNotBlank()) customers[receiverId] ?: receiverId else "Unknown"
+                    LaunchedEffect(receiverId) { if (receiverId.isNotBlank()) ensureAddress(receiverId) }
+                    val addr = addressCache[receiverId]
+                    val loadingAddr = receiverId.isNotBlank() && addressLoading.contains(receiverId) && addr == null
+
                     Row(
                         modifier = Modifier.padding(vertical = 2.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Text("👤", modifier = Modifier.padding(end = 6.dp))
                         Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = if (name == receiverId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
                             when {
-                                isLoading -> {
-                                    Text(
-                                        "Loading recipient...",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                info != null -> {
-                                    Text(
-                                        info.first,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        info.second,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                else -> {
-                                    Text(
-                                        "Recipient not found",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
+                                loadingAddr -> Text(
+                                    "Loading address...",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                addr != null -> Text(
+                                    addr,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                else -> Text(
+                                    if (receiverId.isBlank()) "Recipient not found" else "Address unavailable",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                     }
