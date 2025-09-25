@@ -1,17 +1,13 @@
 package com.example.delivery_and_transportation_management.ui.screen
 
-import android.content.Context
 import android.content.Intent
 import android.preference.PreferenceManager
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -53,9 +49,9 @@ fun DriverDeliveryListScreen(
     // Create route: Start from TARUMT + All delivery destinations
     val routeStops = remember(stops) {
         val startPoint = Stop(
-            name = "TARUMT - Block A Ground Floor",
-            address = tarumtAddress,
-            location = tarumt
+            "TARUMT - Block A Ground Floor",
+            tarumtAddress,
+            tarumt
         )
         val combined = listOf(startPoint) + stops
 
@@ -269,72 +265,56 @@ fun DriverDeliveryListScreen(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
+        // --- Firestore + caches (moved OUTSIDE loop and keyed by receiverId) ---
+        val firestore = remember { FirebaseFirestore.getInstance() }
+        // Key: receiverId (document id in customers). Value: Pair(name,address)
+        val customerCache = remember { mutableStateMapOf<String, Pair<String, String>? >() }
+        val loadingSet = remember { mutableStateSetOf<String>() }
+
+        fun ensureCustomer(receiverId: String, stop: Stop) {
+            if (receiverId.isBlank() || receiverId == "__start_point__") return
+            if (customerCache.containsKey(receiverId) || loadingSet.contains(receiverId)) return
+            loadingSet.add(receiverId)
+            firestore.collection("customers").document(receiverId).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        val name = doc.getString("name") ?: receiverId
+                        val addr = doc.getString("address") ?: (stop.address.ifBlank { "Address N/A" })
+                        customerCache[receiverId] = name to addr
+                        loadingSet.remove(receiverId)
+                    } else {
+                        // fallback by field 'id'
+                        firestore.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
+                            .addOnSuccessListener { q ->
+                                val d = q.documents.firstOrNull()
+                                if (d != null) {
+                                    val name = d.getString("name") ?: receiverId
+                                    val addr = d.getString("address") ?: (stop.address.ifBlank { "Address N/A" })
+                                    customerCache[receiverId] = name to addr
+                                } else {
+                                    customerCache[receiverId] = null
+                                }
+                                loadingSet.remove(receiverId)
+                            }
+                            .addOnFailureListener {
+                                customerCache[receiverId] = null
+                                loadingSet.remove(receiverId)
+                            }
+                    }
+                }
+                .addOnFailureListener {
+                    customerCache[receiverId] = null
+                    loadingSet.remove(receiverId)
+                }
+        }
+
         // Route Details Cards with proper spacing
         routeStops.forEachIndexed { index, stop ->
-            Spacer(modifier = Modifier.height(8.dp))
-            // Firestore recipient cache (key = index) created once per recomposition scope
-            val firestore = remember { FirebaseFirestore.getInstance() }
-            val customerCache = remember { mutableStateMapOf<Int, Pair<String, String>? >() } // index -> (name,address)
-            val loadingSet = remember { mutableStateSetOf<Int>() }
-
-            fun ensureCustomer(indexKey: Int, s: Stop) {
-                if (indexKey == 0) return // start point no lookup
-                if (customerCache.containsKey(indexKey) || loadingSet.contains(indexKey)) return
-                loadingSet.add(indexKey)
-                // Heuristic: try treat stop.name as potential customer document id first
-                val possibleId = s.name.trim()
-                firestore.collection("customers").document(possibleId).get()
-                    .addOnSuccessListener { doc ->
-                        if (doc.exists()) {
-                            val name = doc.getString("name") ?: possibleId
-                            val addr = doc.getString("address") ?: (s.address.ifBlank { "Address N/A" })
-                            customerCache[indexKey] = name to addr
-                            loadingSet.remove(indexKey)
-                        } else {
-                            // fallback query by field 'id'
-                            firestore.collection("customers").whereEqualTo("id", possibleId).limit(1).get()
-                                .addOnSuccessListener { q ->
-                                    val d = q.documents.firstOrNull()
-                                    if (d != null) {
-                                        val name = d.getString("name") ?: possibleId
-                                        val addr = d.getString("address") ?: (s.address.ifBlank { "Address N/A" })
-                                        customerCache[indexKey] = name to addr
-                                    } else {
-                                        // query by name if different semantics
-                                        firestore.collection("customers").whereEqualTo("name", possibleId).limit(1).get()
-                                            .addOnSuccessListener { q2 ->
-                                                val d2 = q2.documents.firstOrNull()
-                                                if (d2 != null) {
-                                                    val name = d2.getString("name") ?: possibleId
-                                                    val addr = d2.getString("address") ?: (s.address.ifBlank { "Address N/A" })
-                                                    customerCache[indexKey] = name to addr
-                                                } else {
-                                                    customerCache[indexKey] = null
-                                                }
-                                                loadingSet.remove(indexKey)
-                                            }
-                                            .addOnFailureListener {
-                                                customerCache[indexKey] = null
-                                                loadingSet.remove(indexKey)
-                                            }
-                                        return@addOnSuccessListener
-                                    }
-                                    loadingSet.remove(indexKey)
-                                }
-                                .addOnFailureListener {
-                                    customerCache[indexKey] = null
-                                    loadingSet.remove(indexKey)
-                                }
-                        }
-                    }
-                    .addOnFailureListener {
-                        customerCache[indexKey] = null
-                        loadingSet.remove(indexKey)
-                    }
+            val receiverId = if (index == 0) "__start_point__" else stop.receiverId
+            if (index > 0) {
+                LaunchedEffect(receiverId) { ensureCustomer(receiverId, stop) }
             }
-
-            LaunchedEffect(index) { ensureCustomer(index, stop) }
-
+            Spacer(modifier = Modifier.height(8.dp))
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -375,30 +355,28 @@ fun DriverDeliveryListScreen(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                                 )
                             } else {
-                                val info = customerCache[index]
-                                val loading = loadingSet.contains(index) && info == null
+                                val info = customerCache[receiverId]
+                                val loading = loadingSet.contains(receiverId) && info == null
                                 when {
-                                    loading -> {
-                                        Text(
-                                            text = "Loading recipient...",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    info != null -> {
-                                        Text(
-                                            text = info.first,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
-                                        )
-                                    }
+                                    loading -> Text(
+                                        text = "Loading recipient...",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    info != null -> Text(
+                                        text = info.first,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                    )
                                     else -> {
+                                        // fallback: if stop.name seems more human than receiverId, show it
+                                        val fallbackName = if (stop.name != receiverId) stop.name else "Recipient not found"
                                         Text(
-                                            text = stop.name, // fallback
+                                            text = fallbackName,
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.error
+                                            color = if (fallbackName == "Recipient not found") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
@@ -436,8 +414,8 @@ fun DriverDeliveryListScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     } else {
-                        val info = customerCache[index]
-                        val loading = loadingSet.contains(index) && info == null
+                        val info = customerCache[receiverId]
+                        val loading = loadingSet.contains(receiverId) && info == null
                         when {
                             loading -> Text(
                                 text = "Fetching address...",
@@ -461,7 +439,6 @@ fun DriverDeliveryListScreen(
                     if (index > 0) {
                         val prevStop = routeStops[index - 1]
                         val distance = calculateDistance(prevStop.location, stop.location)
-
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "📏 Distance from previous: ~${String.format("%.1f", distance)} km",
@@ -486,8 +463,8 @@ fun DriverDeliveryListScreen(
                                     val intent = Intent(context, DriverMapActivity::class.java).apply {
                                         putExtra("lat", stop.location.latitude)
                                         putExtra("lng", stop.location.longitude)
-                                        putExtra("name", customerCache[index]?.first ?: stop.name)
-                                        putExtra("address", customerCache[index]?.second ?: stop.address)
+                                        putExtra("name", customerCache[receiverId]?.first ?: if (stop.name != receiverId) stop.name else receiverId)
+                                        putExtra("address", customerCache[receiverId]?.second ?: stop.address)
                                     }
                                     context.startActivity(intent)
                                 },
@@ -495,8 +472,9 @@ fun DriverDeliveryListScreen(
                             )
                             AssistChip(
                                 onClick = {
+                                    val displayName = customerCache[receiverId]?.first ?: if (stop.name != receiverId) stop.name else receiverId
                                     val geoUri = android.net.Uri.parse(
-                                        "geo:${stop.location.latitude},${stop.location.longitude}?q=${customerCache[index]?.first ?: stop.name}"
+                                        "geo:${stop.location.latitude},${stop.location.longitude}?q=$displayName"
                                     )
                                     val intent = Intent(Intent.ACTION_VIEW, geoUri)
                                     context.startActivity(intent)
@@ -523,7 +501,7 @@ fun DriverDeliveryListScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "📊 OSM Route Summary",
+                    "Route Summary",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
@@ -566,7 +544,7 @@ fun DriverDeliveryListScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = stops.isNotEmpty()
                 ) {
-                    Text(if (stops.isNotEmpty()) "🗺️ Open Full OSM Route Map" else "❌ No Delivery Stops")
+                    Text(if (stops.isNotEmpty()) "Open Full Route Map" else "❌ No Delivery Stops")
                 }
             }
         }

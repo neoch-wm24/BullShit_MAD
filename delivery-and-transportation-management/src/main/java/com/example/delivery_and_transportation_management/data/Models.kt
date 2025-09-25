@@ -3,10 +3,20 @@ package com.example.delivery_and_transportation_management.data
 import org.osmdroid.util.GeoPoint
 
 data class Stop(
-    val name: String,
-    val address: String,
+    val receiverId: String,   // 从 orders.receiver_id 拿
+    val name: String = "",    // Firestore 查询出来后再替换
+    val address: String = "",
     val location: GeoPoint
-)
+) {
+    // Backwards compatibility: old code used Stop(name, address, location)
+    constructor(name: String, address: String, location: GeoPoint) : this(
+        receiverId = name, // fallback: treat provided name as receiverId
+        name = name,
+        address = address,
+        location = location
+    )
+}
+
 
 data class Delivery(
     val id: String = "",              // unique delivery id

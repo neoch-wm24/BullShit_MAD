@@ -103,6 +103,9 @@ class DeliveryViewModel : ViewModel() {
                                     val map = stopAny as? Map<*, *> ?: return@mapNotNull null
                                     val name = map["name"] as? String ?: ""
                                     val address = map["address"] as? String ?: ""
+                                    val receiverId = map["receiverId"] as? String
+                                        ?: map["id"] as? String
+                                        ?: name // fallback
                                     val locationAny = map["location"]
                                     val osmGeoPoint = when (locationAny) {
                                         is GeoPoint -> OSMGeoPoint(locationAny.latitude, locationAny.longitude)
@@ -113,7 +116,12 @@ class DeliveryViewModel : ViewModel() {
                                         }
                                         else -> OSMGeoPoint(0.0, 0.0)
                                     }
-                                    Stop(name, address, osmGeoPoint)
+                                    Stop(
+                                        receiverId = receiverId,
+                                        name = name,
+                                        address = address,
+                                        location = osmGeoPoint
+                                    )
                                 } catch (e: Exception) { null }
                             }
                             else -> emptyList()
@@ -193,6 +201,7 @@ class DeliveryViewModel : ViewModel() {
         "assignedOrders" to delivery.assignedOrders,
         "stops" to delivery.stops.map { stop ->
             mapOf(
+                "receiverId" to stop.receiverId,
                 "name" to stop.name,
                 "address" to stop.address,
                 "location" to mapOf(

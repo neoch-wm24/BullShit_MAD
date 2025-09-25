@@ -51,10 +51,10 @@ fun DriverHome(
             date = today,
             plateNumber = "ABC123",
             stops = listOf(
-                Stop("Alice Johnson", "1 Raffles Place, Singapore 048616", GeoPoint(1.2844, 103.8511)),
-                Stop("Bob Smith", "Marina Bay Sands, 10 Bayfront Ave, Singapore 018956", GeoPoint(1.2834, 103.8607)),
-                Stop("Charlie Brown", "Gardens by the Bay, 18 Marina Gardens Dr, Singapore 018953", GeoPoint(1.2816, 103.8636)),
-                Stop("Diana Lee", "Singapore Flyer, 30 Raffles Ave, Singapore 039803", GeoPoint(1.2897, 103.8634))
+                Stop(receiverId = "demo_alice", name = "Alice Johnson", address = "1 Raffles Place, Singapore 048616", location = GeoPoint(1.2844, 103.8511)),
+                Stop(receiverId = "demo_bob", name = "Bob Smith", address = "Marina Bay Sands, 10 Bayfront Ave, Singapore 018956", location = GeoPoint(1.2834, 103.8607)),
+                Stop(receiverId = "demo_charlie", name = "Charlie Brown", address = "Gardens by the Bay, 18 Marina Gardens Dr, Singapore 018953", location = GeoPoint(1.2816, 103.8636)),
+                Stop(receiverId = "demo_diana", name = "Diana Lee", address = "Singapore Flyer, 30 Raffles Ave, Singapore 039803", location = GeoPoint(1.2897, 103.8634))
             ),
             assignedOrders = listOf("ORD001", "ORD002", "ORD003")
         )
@@ -151,17 +151,6 @@ fun DriverHome(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Top statistics cards
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatCard("Today's Tasks", uiDeliveries.size, Modifier.weight(1f))
-                StatCard("Completed", completedCount, Modifier.weight(1f))
-                StatCard("Incomplete", incompleteCount, Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Date selection
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -265,65 +254,73 @@ fun DriverHome(
                     onDismissRequest = { showingOrdersFor = null },
                     sheetState = sheetState
                 ) {
-                    // Recipient cache maps orderId -> Pair(name, phone) or null if not found
-                    val recipientCache =
-                        remember { mutableStateMapOf<String, Pair<String, String>?>() }
+                    // Collect orders & customers from ViewModel to avoid duplicate Firestore lookups
+                    val orders by deliveryViewModel.orders.collectAsState()
+                    val customers by deliveryViewModel.customers.collectAsState()
+
+                    // orderId -> Pair(name, phone)
+                    val recipientCache = remember { mutableStateMapOf<String, Pair<String, String>?>() }
                     val loadingOrders = remember { mutableStateSetOf<String>() }
+
+                    // receiverId -> phone (so multiple orders same receiver fetch once)
+                    val phoneCache = remember { mutableStateMapOf<String, String?>() }
+                    val phoneLoading = remember { mutableStateSetOf<String>() }
+
                     val db = remember { FirebaseFirestore.getInstance() }
+
+                    fun ensurePhone(receiverId: String, onReady: (String?) -> Unit) {
+                        if (receiverId.isBlank()) { onReady(null); return }
+                        val cached = phoneCache[receiverId]
+                        if (cached != null) { onReady(cached); return }
+                        if (phoneLoading.contains(receiverId)) return
+                        phoneLoading.add(receiverId)
+                        // Try direct doc id, then fallback query by field 'id'
+                        db.collection("customers").document(receiverId).get()
+                            .addOnSuccessListener { doc ->
+                                if (doc.exists()) {
+                                    val phone = doc.get("phone")?.toString()
+                                    phoneCache[receiverId] = phone
+                                    phoneLoading.remove(receiverId)
+                                    onReady(phone)
+                                } else {
+                                    db.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
+                                        .addOnSuccessListener { q ->
+                                            val d = q.documents.firstOrNull()
+                                            val phone = d?.get("phone")?.toString()
+                                            phoneCache[receiverId] = phone
+                                            phoneLoading.remove(receiverId)
+                                            onReady(phone)
+                                        }
+                                        .addOnFailureListener {
+                                            phoneCache[receiverId] = null
+                                            phoneLoading.remove(receiverId)
+                                            onReady(null)
+                                        }
+                                }
+                            }
+                            .addOnFailureListener {
+                                phoneCache[receiverId] = null
+                                phoneLoading.remove(receiverId)
+                                onReady(null)
+                            }
+                    }
 
                     fun ensureRecipientLoaded(orderId: String) {
                         if (recipientCache.containsKey(orderId) || loadingOrders.contains(orderId)) return
                         loadingOrders.add(orderId)
-                        db.collection("orders").document(orderId).get()
-                            .addOnSuccessListener { orderSnap ->
-                                val receiverId = orderSnap.getString("receiver_id")
-                                if (receiverId.isNullOrBlank()) {
-                                    recipientCache[orderId] = null
-                                    loadingOrders.remove(orderId)
-                                    return@addOnSuccessListener
-                                }
-                                // Try direct doc id first
-                                db.collection("customers").document(receiverId).get()
-                                    .addOnSuccessListener { custDoc ->
-                                        if (custDoc.exists()) {
-                                            val name = custDoc.getString("name") ?: "Unknown"
-                                            val phone = custDoc.get("phone")?.toString() ?: "N/A"
-                                            recipientCache[orderId] = name to phone
-                                            loadingOrders.remove(orderId)
-                                        } else {
-                                            // Fallback: query by field 'id'
-                                            db.collection("customers")
-                                                .whereEqualTo("id", receiverId)
-                                                .limit(1)
-                                                .get()
-                                                .addOnSuccessListener { q ->
-                                                    val doc = q.documents.firstOrNull()
-                                                    if (doc != null) {
-                                                        val name =
-                                                            doc.getString("name") ?: "Unknown"
-                                                        val phone =
-                                                            doc.get("phone")?.toString() ?: "N/A"
-                                                        recipientCache[orderId] = name to phone
-                                                    } else {
-                                                        recipientCache[orderId] = null
-                                                    }
-                                                    loadingOrders.remove(orderId)
-                                                }
-                                                .addOnFailureListener {
-                                                    recipientCache[orderId] = null
-                                                    loadingOrders.remove(orderId)
-                                                }
-                                        }
-                                    }
-                                    .addOnFailureListener {
-                                        recipientCache[orderId] = null
-                                        loadingOrders.remove(orderId)
-                                    }
-                            }
-                            .addOnFailureListener {
-                                recipientCache[orderId] = null
-                                loadingOrders.remove(orderId)
-                            }
+                        val order = orders.firstOrNull { it.id == orderId }
+                        if (order == null) {
+                            recipientCache[orderId] = null
+                            loadingOrders.remove(orderId)
+                            return
+                        }
+                        val receiverId = order.receiverId
+                        val name = customers[receiverId] ?: receiverId
+                        // Fetch phone (may already cached)
+                        ensurePhone(receiverId) { phone ->
+                            recipientCache[orderId] = name to (phone ?: "N/A")
+                            loadingOrders.remove(orderId)
+                        }
                     }
 
                     Column(
@@ -353,9 +350,7 @@ fun DriverHome(
                                 items(target.assignedOrders) { orderId ->
                                     LaunchedEffect(orderId) { ensureRecipientLoaded(orderId) }
                                     val recipient = recipientCache[orderId]
-                                    val isLoading =
-                                        loadingOrders.contains(orderId) && recipient == null
-                                    // Non-clickable simple card now
+                                    val isLoading = loadingOrders.contains(orderId) && recipient == null
                                     ElevatedCard(
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = CardDefaults.elevatedCardColors(
@@ -381,7 +376,6 @@ fun DriverHome(
                                                         )
                                                     }
                                                 }
-
                                                 recipient != null -> {
                                                     val (name, phone) = recipient
                                                     Text(
@@ -395,7 +389,6 @@ fun DriverHome(
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
-
                                                 else -> {
                                                     Text(
                                                         text = "Recipient not found",
@@ -419,30 +412,6 @@ fun DriverHome(
             }
         }
 
-    }
-}
-
-@Composable
-fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.padding(4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall
-            )
-            Text(
-                value.toString(),
-                style = MaterialTheme.typography.titleMedium
-            )
-        }
     }
 }
 

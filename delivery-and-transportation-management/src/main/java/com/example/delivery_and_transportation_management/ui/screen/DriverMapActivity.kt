@@ -75,7 +75,12 @@ class DriverMapActivity : ComponentActivity() {
             val name = intent.getStringExtra("name") ?: "Delivery Stop"
             val address = intent.getStringExtra("address") ?: ""
 
-            val stop = Stop(name, address, GeoPoint(lat, lng))
+            val stop = Stop(
+                receiverId = "single_view",
+                name = name,
+                address = address,
+                location = GeoPoint(lat, lng)
+            )
             displaySingleStop(stop)
         }
     }
@@ -88,8 +93,14 @@ class DriverMapActivity : ComponentActivity() {
         val startAddress = "Ground Floor, Bangunan Tan Sri Khaw Kai Boh (Block A), Jalan Genting Kelang, Setapak, 53300 Kuala Lumpur"
 
         val allStops = mutableListOf<Stop>()
-        allStops.add(Stop("TARUMT - Block A Ground Floor", startAddress, tarumtStart))
-
+        allStops.add(
+            Stop(
+                receiverId = "__start_point__",
+                name = "TARUMT - Block A Ground Floor",
+                address = startAddress,
+                location = tarumtStart
+            )
+        )
         // 添加所有配送点
         deliveries.forEach { delivery ->
             allStops.addAll(delivery.stops)
