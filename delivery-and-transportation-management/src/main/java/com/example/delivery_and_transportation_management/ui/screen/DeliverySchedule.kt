@@ -8,14 +8,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
+import com.example.delivery_and_transportation_management.viewmodel.DeliveryScheduleViewModel
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,8 +26,9 @@ fun DeliveryScheduleScreen(
     deliveryViewModel: DeliveryViewModel,
     navController: NavController
 ) {
-    var selectedDate by rememberSaveable { mutableStateOf("") }
-    var selectedTransportations by rememberSaveable { mutableStateOf(setOf<String>()) }
+    val uiVm: DeliveryScheduleViewModel = viewModel()
+    val selectedDate by uiVm.selectedDate.collectAsState()
+    val selectedTransportations by uiVm.selectedTransportations.collectAsState()
 
     // Filter deliveries with empty assignedOrders
     val filteredDeliveries = deliveries.filter { it.assignedOrders.isEmpty() }
@@ -54,16 +56,33 @@ fun DeliveryScheduleScreen(
                         factory = { context ->
                             CalendarView(context).apply {
                                 val today = Calendar.getInstance()
-                                date = today.timeInMillis
+                                // If previously selected date exists, try to restore it
+                                if (selectedDate.isNotBlank()) {
+                                    runCatching {
+                                        val parts = selectedDate.split('-')
+                                        if (parts.size == 3) {
+                                            val cal = Calendar.getInstance().apply {
+                                                set(Calendar.YEAR, parts[0].toInt())
+                                                set(Calendar.MONTH, parts[1].toInt() - 1)
+                                                set(Calendar.DAY_OF_MONTH, parts[2].toInt())
+                                            }
+                                            date = cal.timeInMillis
+                                        }
+                                    }.onFailure { date = today.timeInMillis }
+                                } else {
+                                    date = today.timeInMillis
+                                }
                                 // Set minimum date to today (prevent past dates)
                                 minDate = today.timeInMillis
                                 setOnDateChangeListener { _, year, month, dayOfMonth ->
-                                    selectedDate = String.format(
-                                        Locale.getDefault(),
-                                        "%04d-%02d-%02d",
-                                        year,
-                                        month + 1,
-                                        dayOfMonth
+                                    uiVm.setSelectedDate(
+                                        String.format(
+                                            Locale.getDefault(),
+                                            "%04d-%02d-%02d",
+                                            year,
+                                            month + 1,
+                                            dayOfMonth
+                                        )
                                     )
                                 }
                             }
@@ -108,10 +127,11 @@ fun DeliveryScheduleScreen(
         } else {
             items(filteredDeliveries) { delivery ->
                 val plate = delivery.plateNumber?.takeIf { it.isNotBlank() } ?: "(No Plate)"
+                val checked = selectedTransportations.contains(delivery.id)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (selectedTransportations.contains(delivery.id))
+                        containerColor = if (checked)
                             MaterialTheme.colorScheme.primaryContainer
                         else
                             MaterialTheme.colorScheme.surface
@@ -122,12 +142,9 @@ fun DeliveryScheduleScreen(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Checkbox(
-                            checked = selectedTransportations.contains(delivery.id),
-                            onCheckedChange = { checked ->
-                                selectedTransportations = if (checked)
-                                    selectedTransportations + delivery.id
-                                else
-                                    selectedTransportations - delivery.id
+                            checked = checked,
+                            onCheckedChange = { isChecked ->
+                                uiVm.setTransportationChecked(delivery.id, isChecked)
                             }
                         )
                         Spacer(modifier = Modifier.width(8.dp))

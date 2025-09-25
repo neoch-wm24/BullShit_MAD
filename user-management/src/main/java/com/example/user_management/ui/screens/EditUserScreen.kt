@@ -18,6 +18,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.user_management.viewmodel.EditUserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,49 +27,44 @@ fun EditUserScreen(
     navController: NavHostController,
     customerId: String
 ) {
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    var postcode by remember { mutableStateOf("") }
-    var city by remember { mutableStateOf("") }
-    var state by remember { mutableStateOf("") }
-
-    var isSaving by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showSuccess by remember { mutableStateOf(false) }
+    // ViewModel holds all UI + form state (replaces remember vars)
+    val vm: EditUserViewModel = viewModel()
+    val name by vm.name.collectAsState()
+    val phone by vm.phone.collectAsState()
+    val email by vm.email.collectAsState()
+    val address by vm.address.collectAsState()
+    val postcode by vm.postcode.collectAsState()
+    val city by vm.city.collectAsState()
+    val stateText by vm.stateText.collectAsState()
+    val isSaving by vm.isSaving.collectAsState()
+    val isLoading by vm.isLoading.collectAsState()
+    val errorMessage by vm.errorMessage.collectAsState()
+    val showSuccess by vm.showSuccess.collectAsState()
 
     val db = FirebaseFirestore.getInstance()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Load customer data
+    // Load customer data once per id
     LaunchedEffect(customerId) {
-        try {
-            val snapshot = db.collection("customers").document(customerId).get().await()
-            if (snapshot.exists()) {
-                name = snapshot.getString("name") ?: ""
-                phone = snapshot.get("phone")?.toString() ?: ""
-                email = snapshot.getString("email") ?: ""
-                address = snapshot.getString("address") ?: ""
-                postcode = snapshot.get("postcode")?.toString() ?: ""
-                city = snapshot.getString("city") ?: ""
-                state = snapshot.getString("state") ?: ""
-            } else {
-                errorMessage = "Customer does not exist"
-            }
-        } catch (e: Exception) {
-            errorMessage = "Loading failed: ${e.message}"
-        } finally {
-            isLoading = false
+        vm.ensureLoad(customerId) { id ->
+            val snap = db.collection("customers").document(id).get().await()
+            if (!snap.exists()) null else EditUserViewModel.CustomerData(
+                name = snap.getString("name") ?: "",
+                phone = snap.get("phone")?.toString() ?: "",
+                email = snap.getString("email") ?: "",
+                address = snap.getString("address") ?: "",
+                postcode = snap.get("postcode")?.toString() ?: "",
+                city = snap.getString("city") ?: "",
+                state = snap.getString("state") ?: ""
+            )
         }
     }
 
     LaunchedEffect(showSuccess) {
         if (showSuccess) {
             snackbarHostState.showSnackbar("Customer Updated Successfully")
-            showSuccess = false
+            vm.consumeSuccess()
         }
     }
 
@@ -84,7 +81,7 @@ fun EditUserScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState()), // Always scrollable portrait & landscape
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -99,7 +96,7 @@ fun EditUserScreen(
                 ) {
                     OutlinedTextField(
                         value = name,
-                        onValueChange = { name = it },
+                        onValueChange = { vm.setName(it) },
                         label = { Text("Name") },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = "Name") },
                         modifier = Modifier.fillMaxWidth(),
@@ -108,19 +105,16 @@ fun EditUserScreen(
                     )
                     OutlinedTextField(
                         value = phone,
-                        onValueChange = { phone = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { vm.setPhone(it.filter { ch -> ch.isDigit() }) },
                         label = { Text("Phone Number") },
                         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = "Phone Number") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        )
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
                     )
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it.trim() },
+                        onValueChange = { vm.setEmail(it.trim()) },
                         label = { Text("Email Address") },
                         leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email Address") },
                         modifier = Modifier.fillMaxWidth(),
@@ -129,7 +123,7 @@ fun EditUserScreen(
                     )
                     OutlinedTextField(
                         value = address,
-                        onValueChange = { address = it },
+                        onValueChange = { vm.setAddress(it) },
                         label = { Text("Address") },
                         leadingIcon = { Icon(Icons.Default.Home, contentDescription = "Address") },
                         modifier = Modifier.fillMaxWidth(),
@@ -138,19 +132,16 @@ fun EditUserScreen(
                     )
                     OutlinedTextField(
                         value = postcode,
-                        onValueChange = { postcode = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { vm.setPostcode(it.filter { ch -> ch.isDigit() }) },
                         label = { Text("Postcode") },
                         leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = "Postcode") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        )
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
                     )
                     OutlinedTextField(
                         value = city,
-                        onValueChange = { city = it.trim() },
+                        onValueChange = { vm.setCity(it.trim()) },
                         label = { Text("City") },
                         leadingIcon = { Icon(Icons.Default.LocationCity, contentDescription = "City") },
                         modifier = Modifier.fillMaxWidth(),
@@ -158,8 +149,8 @@ fun EditUserScreen(
                         keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
                     )
                     OutlinedTextField(
-                        value = state,
-                        onValueChange = { state = it.trim() },
+                        value = stateText,
+                        onValueChange = { vm.setStateText(it.trim()) },
                         label = { Text("State") },
                         leadingIcon = { Icon(Icons.Default.Map, contentDescription = "State") },
                         modifier = Modifier.fillMaxWidth(),
@@ -171,7 +162,7 @@ fun EditUserScreen(
 
             if (errorMessage != null) {
                 Text(
-                    text = errorMessage!!,
+                    text = errorMessage ?: "",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -183,56 +174,47 @@ fun EditUserScreen(
             ) {
                 Button(
                     onClick = {
-                        // Input validation
                         if (name.isNotBlank() && phone.isNotBlank() && email.isNotBlank() &&
-                            address.isNotBlank() && postcode.isNotBlank() &&
-                            city.isNotBlank() && state.isNotBlank()
+                            address.isNotBlank() && postcode.isNotBlank() && city.isNotBlank() && stateText.isNotBlank()
                         ) {
-                            isSaving = true
-                            errorMessage = null
-
+                            vm.setSaving(true)
+                            vm.setError(null)
                             val updatedCustomer = hashMapOf(
                                 "name" to name.trim().uppercase(),
-                                "phone" to phone.trim(), // 保留为 String
+                                "phone" to phone.trim(),
                                 "email" to email.trim(),
                                 "address" to address.trim(),
-                                "postcode" to postcode.trim(), // 保留为 String
+                                "postcode" to postcode.trim(),
                                 "city" to city.trim(),
-                                "state" to state.trim()
+                                "state" to stateText.trim()
                             )
-
-
                             db.collection("customers")
                                 .document(customerId)
                                 .update(updatedCustomer as Map<String, Any>)
                                 .addOnSuccessListener {
-                                    isSaving = false
-                                    showSuccess = true
+                                    vm.setSaving(false)
+                                    vm.triggerSuccess()
                                     scope.launch {
                                         delay(1000)
                                         navController.popBackStack()
                                     }
                                 }
                                 .addOnFailureListener { e ->
-                                    isSaving = false
-                                    errorMessage = "Update failed: ${e.message}"
+                                    vm.setSaving(false)
+                                    vm.setError("Update failed: ${e.message}")
                                 }
                         } else {
-                            errorMessage = "All fields must be filled"
+                            vm.setError("All fields must be filled")
                         }
                     },
                     modifier = Modifier.weight(1f),
                     enabled = !isSaving
-                ) {
-                    Text(if (isSaving) "Saving..." else "Save")
-                }
+                ) { Text(if (isSaving) "Saving..." else "Save") }
 
                 Button(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancel")
-                }
+                ) { Text("Cancel") }
             }
         }
     }

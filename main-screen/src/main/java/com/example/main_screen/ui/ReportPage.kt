@@ -24,79 +24,18 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.main_screen.viewmodel.ReportViewModel
 
 @Composable
 fun ReportPage(navController: NavController) {
-    var selectedTab by remember { mutableStateOf("Order") } // "Order" or "Sales"
-    var selectedPeriod by remember { mutableStateOf("Year") } // "Year" or "Month"
-    var chartEntries by remember { mutableStateOf<List<Pair<Float, Float>>>(emptyList()) }
-    var xLabels by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var noData by remember { mutableStateOf(false) }
-
-    val db = FirebaseFirestore.getInstance()
-
-    // 当 tab/period 变化时，重新拉取数据
-    LaunchedEffect(selectedTab, selectedPeriod) {
-        isLoading = true
-        noData = false
-        try {
-            if (selectedTab == "Order") {
-                if (selectedPeriod == "Year") {
-                    // 最近 5 年（包含今年），按年份统计订单数量
-                    val now = Calendar.getInstance()
-                    val currentYear = now.get(Calendar.YEAR)
-                    val years = (currentYear - 4..currentYear).toList()
-                    val entries = mutableListOf<Pair<Float, Float>>()
-                    val labels = mutableListOf<String>()
-                    years.forEachIndexed { idx, y ->
-                        val count = getOrderCountForYear(db, y)
-                        entries.add(idx.toFloat() to count.toFloat())
-                        labels.add(y.toString())
-                    }
-                    chartEntries = entries
-                    xLabels = labels
-                    noData = entries.all { it.second == 0f }
-                } else {
-                    // 本年 12 个月
-                    val months = (1..12).toList()
-                    val entries = months.mapIndexed { idx, m ->
-                        idx.toFloat() to getOrderCountForMonth(db, m).toFloat()
-                    }
-                    chartEntries = entries
-                    xLabels = months.map { monthNumberToLabel(it) }
-                    noData = chartEntries.all { it.second == 0f }
-                }
-            } else {
-                // Sales
-                if (selectedPeriod == "Year") {
-                    val now = Calendar.getInstance()
-                    val currentYear = now.get(Calendar.YEAR)
-                    val years = (currentYear - 4..currentYear).toList()
-                    val entries = mutableListOf<Pair<Float, Float>>()
-                    val labels = mutableListOf<String>()
-                    years.forEachIndexed { idx, y ->
-                        val total = getSalesTotalForYear(db, y)
-                        entries.add(idx.toFloat() to total.toFloat())
-                        labels.add(y.toString())
-                    }
-                    chartEntries = entries
-                    xLabels = labels
-                    noData = entries.all { it.second == 0f }
-                } else {
-                    val months = (1..12).toList()
-                    val entries = months.mapIndexed { idx, m ->
-                        idx.toFloat() to getSalesTotalForMonth(db, m).toFloat()
-                    }
-                    chartEntries = entries
-                    xLabels = months.map { monthNumberToLabel(it) }
-                    noData = chartEntries.all { it.second == 0f }
-                }
-            }
-        } finally {
-            isLoading = false
-        }
-    }
+    val vm: ReportViewModel = viewModel()
+    val selectedTab by vm.selectedTab.collectAsState()
+    val selectedPeriod by vm.selectedPeriod.collectAsState()
+    val chartEntries by vm.chartEntries.collectAsState()
+    val xLabels by vm.xLabels.collectAsState()
+    val isLoading by vm.isLoading.collectAsState()
+    val noData by vm.noData.collectAsState()
 
     Column(
         modifier = Modifier
@@ -110,8 +49,8 @@ fun ReportPage(navController: NavController) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            ToggleButton(text = "Orders", selected = selectedTab == "Order") { selectedTab = "Order" }
-            ToggleButton(text = "Sales", selected = selectedTab == "Sales") { selectedTab = "Sales" }
+            ToggleButton(text = "Orders", selected = selectedTab == "Order") { vm.setSelectedTab("Order") }
+            ToggleButton(text = "Sales", selected = selectedTab == "Sales") { vm.setSelectedTab("Sales") }
         }
 
         // 统计卡（包含 Year/Month 按钮 + 折线图）
@@ -135,21 +74,18 @@ fun ReportPage(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ToggleSmall(text = "Year", selected = selectedPeriod == "Year") { selectedPeriod = "Year" }
-                    ToggleSmall(text = "Month", selected = selectedPeriod == "Month") { selectedPeriod = "Month" }
+                    ToggleSmall(text = "Year", selected = selectedPeriod == "Year") { vm.setSelectedPeriod("Year") }
+                    ToggleSmall(text = "Month", selected = selectedPeriod == "Month") { vm.setSelectedPeriod("Month") }
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                if (isLoading) {
-                    CircularProgressIndicator()
-                } else if (noData) {
-                    // nicer no-data placeholder
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)) {
+                when {
+                    isLoading -> CircularProgressIndicator()
+                    noData -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)) {
                         Text("No data for selected range", style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                     }
-                } else {
-                    LineChartView(
+                    else -> LineChartView(
                         dataPoints = chartEntries,
                         xLabels = xLabels,
                         label = if (selectedTab == "Order") "Orders" else "Sales (RM)",

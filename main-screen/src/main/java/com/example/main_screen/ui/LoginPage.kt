@@ -6,8 +6,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -29,7 +31,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.main_screen.viewmodel.AuthState
 import com.example.main_screen.viewmodel.AuthViewModel
+import com.example.main_screen.viewmodel.LoginUiViewModel
 import com.airbnb.lottie.compose.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LoginPage(
@@ -45,9 +49,12 @@ fun LoginPage(
         iterations = LottieConstants.IterateForever
     )
 
-    var employeeID by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
+    // 使用 UI ViewModel 保存输入状态
+    val uiViewModel: LoginUiViewModel = viewModel()
+    val employeeID by uiViewModel.employeeId.collectAsState()
+    val password by uiViewModel.password.collectAsState()
+    val showPassword by uiViewModel.showPassword.collectAsState()
+    val buttonPressed by uiViewModel.buttonPressed.collectAsState()
 
     val authState = authViewModel.authState.observeAsState()
     val context = LocalContext.current
@@ -78,16 +85,18 @@ fun LoginPage(
     )
 
     // 按钮点击缩放
-    var buttonPressed by remember { mutableStateOf(false) }
     val buttonScale by animateFloatAsState(
         targetValue = if (buttonPressed) 0.95f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "buttonScale"
     )
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -121,7 +130,7 @@ fun LoginPage(
 
         OutlinedTextField(
             value = employeeID,
-            onValueChange = { employeeID = it },
+            onValueChange = { uiViewModel.setEmployeeId(it) },
             label = { Text(text = "User ID") },
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
@@ -132,7 +141,7 @@ fun LoginPage(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { uiViewModel.setPassword(it) },
             label = { Text(text = "Password") },
             singleLine = true,
             visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
@@ -141,9 +150,8 @@ fun LoginPage(
                 onDone = { authViewModel.loginWithEmployeeID(employeeID, password) }
             ),
             trailingIcon = {
-                val image =
-                    if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                IconButton(onClick = { showPassword = !showPassword }) {
+                val image = if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                IconButton(onClick = { uiViewModel.toggleShowPassword() }) {
                     Icon(
                         imageVector = image,
                         contentDescription = if (showPassword) "Hide password" else "Show password"
@@ -157,16 +165,22 @@ fun LoginPage(
 
         // 登录按钮
         Button(
-            onClick = { authViewModel.loginWithEmployeeID(employeeID, password) },
+            onClick = { authViewModel.loginWithEmployeeID(employeeID, password); uiViewModel.setButtonPressed(true) },
             enabled = authState.value != AuthState.Loading,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .scale(buttonScale)
+                .scale(
+                    animateFloatAsState(
+                        targetValue = if (buttonPressed) 0.95f else 1f,
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        label = "buttonScale"
+                    ).value
+                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                ) { buttonPressed = true },
+                ) { uiViewModel.setButtonPressed(true) },
         ) {
             AnimatedVisibility(visible = authState.value == AuthState.Loading) {
                 CircularProgressIndicator(

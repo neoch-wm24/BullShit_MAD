@@ -75,6 +75,7 @@ dependencies {
     implementation("com.github.tehras:charts:0.2.4-alpha")
 
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

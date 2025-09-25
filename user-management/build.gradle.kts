@@ -60,6 +60,7 @@ dependencies {
     implementation(project(":core-ui"))
     implementation(project(":core-data"))
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
 
     testImplementation(libs.junit)

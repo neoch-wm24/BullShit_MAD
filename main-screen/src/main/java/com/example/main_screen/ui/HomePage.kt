@@ -47,9 +47,11 @@ fun HomePage(navController: NavController, role: String, employeeID: String? = n
 
 @Composable
 private fun AdminHomeScreen(navController: NavController) {
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -69,9 +71,11 @@ private fun AdminHomeScreen(navController: NavController) {
 
 @Composable
 private fun EmployeeHomeScreen(navController: NavController) {
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -212,5 +216,3 @@ private fun ReportRow(label: String, value: String) {
         )
     }
 }
-
-

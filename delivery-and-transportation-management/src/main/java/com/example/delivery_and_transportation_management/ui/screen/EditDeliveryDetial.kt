@@ -1,14 +1,19 @@
 package com.example.delivery_and_transportation_management.ui.screen
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.delivery_and_transportation_management.data.Delivery
-import com.google.firebase.firestore.FirebaseFirestore
+import com.example.delivery_and_transportation_management.viewmodel.EditDeliveryViewModel
+import android.content.res.Configuration
+import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -17,52 +22,41 @@ fun EditDeliveryScreen(
     navController: NavController,
     onSave: (Delivery) -> Unit
 ) {
-    // States matching AddTransportation layout
-    var plateNumber by remember { mutableStateOf(delivery.plateNumber.orEmpty()) }
-
-    var driverList by remember { mutableStateOf(listOf<String>()) }
-    var selectedDriver by remember { mutableStateOf(delivery.driverName) }
-    var expandedDriver by remember { mutableStateOf(false) }
-
-    var expandedType by remember { mutableStateOf(false) }
-    var selectedType by remember { mutableStateOf(delivery.type.ifBlank { "Car" }) }
-    val vehicleTypes = listOf("Car", "Van", "Truck", "Container Truck")
-
-    // Load drivers (same as AddTransportation)
-    LaunchedEffect(Unit) {
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .whereEqualTo("role", "driver")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                driverList = snapshot.documents.mapNotNull { it.getString("name") }
-                // Ensure currently selected driver remains even if not in fetched list
-                if (selectedDriver.isNotBlank() && selectedDriver !in driverList) {
-                    driverList = listOf(selectedDriver) + driverList
-                }
-            }
-            .addOnFailureListener {
-                // Keep current driver if fetch fails
-                driverList = if (selectedDriver.isNotBlank()) listOf(selectedDriver) else emptyList()
-            }
+    val vm: EditDeliveryViewModel = viewModel()
+    // Initialize once with incoming delivery data
+    LaunchedEffect(delivery.id) {
+        vm.initializeIfNeeded(
+            initialPlate = delivery.plateNumber.orEmpty(),
+            initialDriver = delivery.driverName,
+            initialType = delivery.type
+        )
+        vm.loadDriversIfNeeded()
     }
 
-    fun isValidPlateNumber(plate: String): Boolean {
-        val regex = Regex("^[A-Za-z]{1,3}[0-9]{1,4}$")
-        return plate.matches(regex)
-    }
-    val isPlateNumberValid = plateNumber.isBlank() || isValidPlateNumber(plateNumber)
+    val plateNumber by vm.plateNumber.collectAsState()
+    val driverList by vm.driverList.collectAsState()
+    val selectedDriver by vm.selectedDriver.collectAsState()
+    val expandedDriver by vm.expandedDriver.collectAsState()
+    val selectedType by vm.selectedType.collectAsState()
+    val expandedType by vm.expandedType.collectAsState()
+    val vehicleTypes = vm.vehicleTypes
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val isPlateNumberValid = plateNumber.isBlank() || vm.isValidPlateNumber(plateNumber)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .then(if (isLandscape) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Plate Number
         OutlinedTextField(
             value = plateNumber,
-            onValueChange = { plateNumber = it.uppercase() },
+            onValueChange = { vm.setPlateNumber(it) },
             label = { Text("Plate Number") },
             placeholder = { Text("e.g., A123 or ABC123") },
             isError = !isPlateNumberValid,
@@ -80,7 +74,7 @@ fun EditDeliveryScreen(
         // Driver dropdown
         ExposedDropdownMenuBox(
             expanded = expandedDriver,
-            onExpandedChange = { expandedDriver = !expandedDriver }
+            onExpandedChange = { vm.toggleDriverExpanded() }
         ) {
             OutlinedTextField(
                 value = selectedDriver,
@@ -94,14 +88,14 @@ fun EditDeliveryScreen(
             )
             ExposedDropdownMenu(
                 expanded = expandedDriver,
-                onDismissRequest = { expandedDriver = false }
+                onDismissRequest = { vm.dismissDriverDropdown() }
             ) {
                 driverList.forEach { driver ->
                     DropdownMenuItem(
                         text = { Text(driver) },
                         onClick = {
-                            selectedDriver = driver
-                            expandedDriver = false
+                            vm.setSelectedDriver(driver)
+                            vm.dismissDriverDropdown()
                         }
                     )
                 }
@@ -111,7 +105,7 @@ fun EditDeliveryScreen(
         // Vehicle type dropdown
         ExposedDropdownMenuBox(
             expanded = expandedType,
-            onExpandedChange = { expandedType = !expandedType }
+            onExpandedChange = { vm.toggleTypeExpanded() }
         ) {
             OutlinedTextField(
                 value = selectedType,
@@ -125,14 +119,14 @@ fun EditDeliveryScreen(
             )
             ExposedDropdownMenu(
                 expanded = expandedType,
-                onDismissRequest = { expandedType = false }
+                onDismissRequest = { vm.dismissTypeDropdown() }
             ) {
                 vehicleTypes.forEach { type ->
                     DropdownMenuItem(
                         text = { Text(type) },
                         onClick = {
-                            selectedType = type
-                            expandedType = false
+                            vm.setSelectedType(type)
+                            vm.dismissTypeDropdown()
                         }
                     )
                 }
@@ -143,18 +137,17 @@ fun EditDeliveryScreen(
 
         Button(
             onClick = {
-                if (plateNumber.isNotBlank() && selectedDriver.isNotBlank() && isValidPlateNumber(plateNumber)) {
+                if (plateNumber.isNotBlank() && selectedDriver.isNotBlank() && vm.isValidPlateNumber(plateNumber)) {
                     val updatedDelivery = delivery.copy(
                         plateNumber = plateNumber,
                         driverName = selectedDriver,
                         type = selectedType
-                        // date unchanged
                     )
                     onSave(updatedDelivery)
                 }
             },
             modifier = Modifier.align(Alignment.End),
-            enabled = plateNumber.isNotBlank() && selectedDriver.isNotBlank() && isValidPlateNumber(plateNumber)
+            enabled = plateNumber.isNotBlank() && selectedDriver.isNotBlank() && vm.isValidPlateNumber(plateNumber)
         ) {
             Text("Save")
         }

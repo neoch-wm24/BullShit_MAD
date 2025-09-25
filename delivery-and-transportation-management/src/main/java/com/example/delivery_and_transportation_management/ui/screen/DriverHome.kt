@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
@@ -21,6 +22,7 @@ import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.data.Stop
+import com.google.firebase.firestore.FirebaseFirestore
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -30,6 +32,7 @@ import org.osmdroid.views.overlay.Polyline
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriverHome(
     navController: NavController,
@@ -65,8 +68,8 @@ fun DriverHome(
 
     var selectedDate by remember { mutableStateOf(today) }
     var showCalendar by remember { mutableStateOf(false) }
-    var showRoute by remember { mutableStateOf(false) }
-    var selectedStop by remember { mutableStateOf<Stop?>(null) }
+    var showingOrdersFor by remember { mutableStateOf<Delivery?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Debug: Enhanced logging for September 25th issue
     LaunchedEffect(deliveries, employeeID, selectedDate) {
@@ -206,12 +209,10 @@ fun DriverHome(
                     modifier = Modifier.weight(1f)
                 ) {
                     items(uiDeliveries) { delivery ->
-                        DeliveryCard(delivery) {
-                            if (delivery.stops.isNotEmpty()) {
-                                selectedStop = delivery.stops.first()
-                                showRoute = true
-                            }
-                        }
+                        DeliveryCard(
+                            delivery = delivery,
+                            onShowOrders = { showingOrdersFor = it }
+                        )
                     }
                 }
             }
@@ -226,60 +227,6 @@ fun DriverHome(
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text("Start Delivery Route")
-                }
-            }
-
-            // OSMDroid route display (替换 Google Maps 的部分)
-            if (showRoute && uiDeliveries.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Today's OSM Route", style = MaterialTheme.typography.titleLarge)
-
-                val stops = uiDeliveries.flatMap { it.stops }
-                if (stops.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        AndroidView(
-                            factory = { ctx ->
-                                Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx))
-                                Configuration.getInstance().userAgentValue = ctx.packageName
-
-                                val mapView = MapView(ctx)
-                                mapView.setTileSource(TileSourceFactory.MAPNIK)
-                                mapView.setMultiTouchControls(true)
-
-                                if (stops.isNotEmpty()) {
-                                    // 设置中心点
-                                    mapView.controller.setCenter(stops.first().location)
-                                    mapView.controller.setZoom(12.0)
-
-                                    // 添加标记
-                                    stops.forEach { stop ->
-                                        val marker = Marker(mapView)
-                                        marker.position = stop.location
-                                        marker.title = stop.name
-                                        marker.snippet = stop.address
-                                        mapView.overlays.add(marker)
-                                    }
-
-                                    // 绘制路线
-                                    if (stops.size > 1) {
-                                        val polyline = Polyline()
-                                        polyline.setPoints(stops.map { it.location })
-                                        polyline.color = android.graphics.Color.BLUE
-                                        polyline.width = 8.0f
-                                        mapView.overlays.add(polyline)
-                                    }
-                                }
-
-                                mapView
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
                 }
             }
         }
@@ -309,26 +256,169 @@ fun DriverHome(
                 )
             }
         }
-    }
 
-    // Stop details dialog
-    if (selectedStop != null) {
-        val stop = selectedStop
-        AlertDialog(
-            onDismissRequest = { selectedStop = null },
-            confirmButton = {
-                TextButton(onClick = { selectedStop = null }) {
-                    Text("Close")
-                }
-            },
-            title = { Text("Recipient Details") },
-            text = {
-                Column {
-                    Text("Name: ${stop?.name ?: ""}")
-                    Text("Address: ${stop?.address ?: ""}")
+        // Orders bottom sheet
+        if (showingOrdersFor != null) {
+            val target = showingOrdersFor
+            if (target != null) {
+                ModalBottomSheet(
+                    onDismissRequest = { showingOrdersFor = null },
+                    sheetState = sheetState
+                ) {
+                    // Recipient cache maps orderId -> Pair(name, phone) or null if not found
+                    val recipientCache =
+                        remember { mutableStateMapOf<String, Pair<String, String>?>() }
+                    val loadingOrders = remember { mutableStateSetOf<String>() }
+                    val db = remember { FirebaseFirestore.getInstance() }
+
+                    fun ensureRecipientLoaded(orderId: String) {
+                        if (recipientCache.containsKey(orderId) || loadingOrders.contains(orderId)) return
+                        loadingOrders.add(orderId)
+                        db.collection("orders").document(orderId).get()
+                            .addOnSuccessListener { orderSnap ->
+                                val receiverId = orderSnap.getString("receiver_id")
+                                if (receiverId.isNullOrBlank()) {
+                                    recipientCache[orderId] = null
+                                    loadingOrders.remove(orderId)
+                                    return@addOnSuccessListener
+                                }
+                                // Try direct doc id first
+                                db.collection("customers").document(receiverId).get()
+                                    .addOnSuccessListener { custDoc ->
+                                        if (custDoc.exists()) {
+                                            val name = custDoc.getString("name") ?: "Unknown"
+                                            val phone = custDoc.get("phone")?.toString() ?: "N/A"
+                                            recipientCache[orderId] = name to phone
+                                            loadingOrders.remove(orderId)
+                                        } else {
+                                            // Fallback: query by field 'id'
+                                            db.collection("customers")
+                                                .whereEqualTo("id", receiverId)
+                                                .limit(1)
+                                                .get()
+                                                .addOnSuccessListener { q ->
+                                                    val doc = q.documents.firstOrNull()
+                                                    if (doc != null) {
+                                                        val name =
+                                                            doc.getString("name") ?: "Unknown"
+                                                        val phone =
+                                                            doc.get("phone")?.toString() ?: "N/A"
+                                                        recipientCache[orderId] = name to phone
+                                                    } else {
+                                                        recipientCache[orderId] = null
+                                                    }
+                                                    loadingOrders.remove(orderId)
+                                                }
+                                                .addOnFailureListener {
+                                                    recipientCache[orderId] = null
+                                                    loadingOrders.remove(orderId)
+                                                }
+                                        }
+                                    }
+                                    .addOnFailureListener {
+                                        recipientCache[orderId] = null
+                                        loadingOrders.remove(orderId)
+                                    }
+                            }
+                            .addOnFailureListener {
+                                recipientCache[orderId] = null
+                                loadingOrders.remove(orderId)
+                            }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Orders for Delivery #${target.id.take(8)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        if (target.assignedOrders.isEmpty()) {
+                            Text(
+                                text = "No orders assigned",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            val listState = rememberLazyListState()
+                            LazyColumn(
+                                state = listState,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.heightIn(max = 420.dp)
+                            ) {
+                                items(target.assignedOrders) { orderId ->
+                                    LaunchedEffect(orderId) { ensureRecipientLoaded(orderId) }
+                                    val recipient = recipientCache[orderId]
+                                    val isLoading =
+                                        loadingOrders.contains(orderId) && recipient == null
+                                    // Non-clickable simple card now
+                                    ElevatedCard(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.elevatedCardColors(
+                                            containerColor = MaterialTheme.colorScheme.surface
+                                        )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp)
+                                        ) {
+                                            Text(
+                                                text = "Order #${orderId.take(12)}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            when {
+                                                isLoading -> {
+                                                    CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.labelSmall) {
+                                                        Text(
+                                                            "Loading recipient…",
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+
+                                                recipient != null -> {
+                                                    val (name, phone) = recipient
+                                                    Text(
+                                                        text = name,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                    Text(
+                                                        text = phone,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+
+                                                else -> {
+                                                    Text(
+                                                        text = "Recipient not found",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.error
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedButton(
+                            onClick = { showingOrdersFor = null },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Close") }
+                    }
                 }
             }
-        )
+        }
+
     }
 }
 
@@ -357,20 +447,20 @@ fun StatCard(label: String, value: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun DeliveryCard(delivery: Delivery, onClick: () -> Unit = {}) {
+fun DeliveryCard(
+    delivery: Delivery,
+    onShowOrders: (Delivery) -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .clickable { onClick() },
+            .padding(vertical = 6.dp), // removed clickable
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             // Header with delivery ID and status
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -450,7 +540,7 @@ fun DeliveryCard(delivery: Delivery, onClick: () -> Unit = {}) {
             // Orders section
             if (delivery.assignedOrders.isNotEmpty()) {
                 AssistChip(
-                    onClick = { },
+                    onClick = { onShowOrders(delivery) },
                     label = {
                         Text(
                             "📦 ${delivery.assignedOrders.size} ${if (delivery.assignedOrders.size == 1) "order" else "orders"} assigned",
@@ -464,37 +554,6 @@ fun DeliveryCard(delivery: Delivery, onClick: () -> Unit = {}) {
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Order details
-                Column {
-                    delivery.assignedOrders.take(3).forEach { orderId ->
-                        Row(
-                            modifier = Modifier.padding(vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "•",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.width(16.dp)
-                            )
-                            Text(
-                                "Order #${orderId.take(8)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    if (delivery.assignedOrders.size > 3) {
-                        Text(
-                            "   +${delivery.assignedOrders.size - 3} more orders...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                        )
-                    }
-                }
             } else {
                 Card(
                     colors = CardDefaults.cardColors(
@@ -518,38 +577,116 @@ fun DeliveryCard(delivery: Delivery, onClick: () -> Unit = {}) {
             }
 
             // Delivery locations preview
-            if (delivery.stops.isNotEmpty()) {
+            if (delivery.assignedOrders.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Delivery Locations:",
+                    text = "Recipients:",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                delivery.stops.take(2).forEach { stop ->
+
+                // Cache for recipient info: orderId -> (name, address) or null if not found
+                val firestore = remember { FirebaseFirestore.getInstance() }
+                val recipientCache = remember(delivery.id) { mutableStateMapOf<String, Pair<String, String>? >() }
+                val loadingSet = remember(delivery.id) { mutableStateSetOf<String>() }
+
+                fun ensureRecipient(orderId: String) {
+                    if (recipientCache.containsKey(orderId) || loadingSet.contains(orderId)) return
+                    loadingSet.add(orderId)
+                    firestore.collection("orders").document(orderId).get()
+                        .addOnSuccessListener { orderSnap ->
+                            val receiverId = orderSnap.getString("receiver_id")
+                            if (receiverId.isNullOrBlank()) {
+                                recipientCache[orderId] = null
+                                loadingSet.remove(orderId)
+                            } else {
+                                firestore.collection("customers").document(receiverId).get()
+                                    .addOnSuccessListener { cust ->
+                                        if (cust.exists()) {
+                                            val name = cust.getString("name") ?: receiverId
+                                            val addr = cust.getString("address") ?: "Address N/A"
+                                            recipientCache[orderId] = name to addr
+                                        } else {
+                                            // fallback query by field 'id'
+                                            firestore.collection("customers").whereEqualTo("id", receiverId).limit(1).get()
+                                                .addOnSuccessListener { q ->
+                                                    val doc = q.documents.firstOrNull()
+                                                    if (doc != null) {
+                                                        val name = doc.getString("name") ?: receiverId
+                                                        val addr = doc.getString("address") ?: "Address N/A"
+                                                        recipientCache[orderId] = name to addr
+                                                    } else {
+                                                        recipientCache[orderId] = null
+                                                    }
+                                                    loadingSet.remove(orderId)
+                                                }
+                                                .addOnFailureListener {
+                                                    recipientCache[orderId] = null
+                                                    loadingSet.remove(orderId)
+                                                }
+                                            return@addOnSuccessListener
+                                        }
+                                        loadingSet.remove(orderId)
+                                    }
+                                    .addOnFailureListener {
+                                        recipientCache[orderId] = null
+                                        loadingSet.remove(orderId)
+                                    }
+                            }
+                        }
+                        .addOnFailureListener {
+                            recipientCache[orderId] = null
+                            loadingSet.remove(orderId)
+                        }
+                }
+
+                val previewOrders = delivery.assignedOrders.take(2)
+                previewOrders.forEach { oid ->
+                    LaunchedEffect(oid) { ensureRecipient(oid) }
+                    val info = recipientCache[oid]
+                    val isLoading = loadingSet.contains(oid) && info == null
                     Row(
-                        modifier = Modifier.padding(vertical = 1.dp),
+                        modifier = Modifier.padding(vertical = 2.dp),
                         verticalAlignment = Alignment.Top
                     ) {
-                        Text("📍", modifier = Modifier.padding(end = 4.dp))
-                        Column {
-                            Text(
-                                stop.name,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                stop.address,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
+                        Text("👤", modifier = Modifier.padding(end = 6.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            when {
+                                isLoading -> {
+                                    Text(
+                                        "Loading recipient...",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                info != null -> {
+                                    Text(
+                                        info.first,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        info.second,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                                else -> {
+                                    Text(
+                                        "Recipient not found",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-                if (delivery.stops.size > 2) {
+                if (delivery.assignedOrders.size > 2) {
                     Text(
-                        "   +${delivery.stops.size - 2} more locations...",
+                        "   +${delivery.assignedOrders.size - 2} more recipients...",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic

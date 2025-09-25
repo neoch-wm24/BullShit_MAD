@@ -1,6 +1,9 @@
 package com.example.delivery_and_transportation_management.ui.screen
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
@@ -11,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import com.example.delivery_and_transportation_management.data.Delivery
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.delivery_and_transportation_management.viewmodel.DeliveryDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,10 +26,15 @@ fun DeliveryDetail(
     onEdit: (Delivery) -> Unit,
     onDelete: (Delivery) -> Unit
 ) {
+    val detailVm: DeliveryDetailViewModel = viewModel() // retained UI holder (future expansion)
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .then(if (isLandscape) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Top: Transport details (similar placement style to AddTransportation)

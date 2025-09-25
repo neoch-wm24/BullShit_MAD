@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -118,101 +119,30 @@ fun SearchDeliveryandTransportationScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(8.dp, bottom = if (isMultiSelectMode) 72.dp else 16.dp)
                     ) {
-                        items(filteredDeliveries) { delivery ->
-                            val plateDisplay = delivery.plateNumber ?: delivery.id
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        if (isMultiSelectMode) {
-                                            selectedItems = if (delivery in selectedItems)
-                                                selectedItems - delivery
-                                            else
-                                                selectedItems + delivery
-                                        } else {
-                                            navController.navigate("deliveryDetail/${delivery.id}")
-                                        }
-                                    },
-                                colors = CardDefaults.cardColors(
-                                    containerColor =
-                                        if (isMultiSelectMode && delivery in selectedItems)
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.surface
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+                        items(filteredDeliveries, key = { it.id }) { delivery ->
+                            val selected = delivery in selectedItems
+                            DeliveryListItem(
+                                delivery = delivery,
+                                selected = selected,
+                                multiSelect = isMultiSelectMode,
+                                onClick = {
                                     if (isMultiSelectMode) {
-                                        Checkbox(
-                                            checked = delivery in selectedItems,
-                                            onCheckedChange = { checked ->
-                                                selectedItems = if (checked)
-                                                    selectedItems + delivery
-                                                else
-                                                    selectedItems - delivery
-                                            }
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
+                                        selectedItems = if (selected) selectedItems - delivery else selectedItems + delivery
+                                    } else {
+                                        navController.navigate("deliveryDetail/${delivery.id}")
                                     }
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("Plate: $plateDisplay", style = MaterialTheme.typography.titleMedium)
-                                        Text("Driver: ${delivery.driverName}", style = MaterialTheme.typography.bodyMedium)
-                                        Text("Type: ${delivery.type}", style = MaterialTheme.typography.bodyMedium)
-                                        Text(
-                                            "Date: ${delivery.date.takeIf { it.isNotBlank() } ?: "Not scheduled"}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        // Show assigned orders summary - use real data from Delivery
-                                        val assignedOrdersCount = delivery.assignedOrders.size
-
-                                        if (assignedOrdersCount > 0) {
-                                            Row(
-                                                modifier = Modifier.padding(top = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                AssistChip(
-                                                    onClick = {
-                                                        // Navigate to order list or first order if only one
-                                                        if (delivery.assignedOrders.size == 1) {
-                                                            navController.navigate("OrderDetails/${delivery.assignedOrders.first()}")
-                                                        } else {
-                                                            // For multiple orders, navigate to the general order screen for now
-                                                            // TODO: Implement a dedicated screen for delivery orders
-                                                            navController.navigate("order")
-                                                        }
-                                                    },
-                                                    label = {
-                                                        Text(
-                                                            "📦 $assignedOrdersCount orders",
-                                                            style = MaterialTheme.typography.labelSmall
-                                                        )
-                                                    },
-                                                    colors = AssistChipDefaults.assistChipColors(
-                                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                                                    )
-                                                )
-                                            }
-                                        } else {
-                                            Text(
-                                                "📦 No orders assigned",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.outline,
-                                                modifier = Modifier.padding(top = 4.dp)
-                                            )
-                                        }
+                                },
+                                onAssignedOrdersClick = {
+                                    if (delivery.assignedOrders.size == 1) {
+                                        navController.navigate("OrderDetails/${delivery.assignedOrders.first()}")
+                                    } else if (delivery.assignedOrders.isNotEmpty()) {
+                                        navController.navigate("order")
                                     }
                                 }
-                            }
+                            )
                         }
                     }
                 }
@@ -229,6 +159,84 @@ fun SearchDeliveryandTransportationScreen(
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun DeliveryListItem(
+    delivery: Delivery,
+    selected: Boolean,
+    multiSelect: Boolean,
+    onClick: () -> Unit,
+    onAssignedOrdersClick: () -> Unit
+) {
+    val assignedOrdersCount = delivery.assignedOrders.size
+    val baseColor = Color(0xFFF8F8F8)
+    val containerColor = when {
+        multiSelect && selected -> MaterialTheme.colorScheme.primaryContainer
+        else -> baseColor
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val plateDisplay = delivery.plateNumber ?: delivery.id
+                Text(
+                    text = "Plate: $plateDisplay",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (delivery.date.isNotBlank()) {
+                    Text(
+                        text = delivery.date,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Driver: ${delivery.driverName}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Type: ${delivery.type}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (assignedOrdersCount > 0) {
+                Spacer(Modifier.height(6.dp))
+                AssistChip(
+                    onClick = onAssignedOrdersClick,
+                    label = {
+                        Text(
+                            "📦 $assignedOrdersCount orders",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                )
+            } else {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "📦 No orders assigned",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
         }
     }
 }

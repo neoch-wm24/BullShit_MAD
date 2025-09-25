@@ -1,11 +1,15 @@
 package com.example.delivery_and_transportation_management.ui.screen
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -13,6 +17,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.delivery_and_transportation_management.data.Delivery
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
+import com.example.delivery_and_transportation_management.viewmodel.AddTransportationViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
@@ -23,46 +28,34 @@ fun AddTransportationScreen(
     navController: NavController,
     deliveryViewModel: DeliveryViewModel = viewModel()
 ) {
-    var plateNumber by rememberSaveable { mutableStateOf("") }
-    // (driverName, employeeID)
-    var driverList by remember { mutableStateOf(listOf<Pair<String, String>>()) }
-    var selectedDriverName by rememberSaveable { mutableStateOf("") }
-    var selectedEmployeeID by rememberSaveable { mutableStateOf("") }
-    var expandedDriver by rememberSaveable { mutableStateOf(false) }
+    val vm: AddTransportationViewModel = viewModel()
 
-    var expandedType by rememberSaveable { mutableStateOf(false) }
-    var selectedType by rememberSaveable { mutableStateOf("Car") }
-    val vehicleTypes = listOf("Car", "Van", "Truck", "Container Truck")
+    val plateNumber by vm.plateNumber.collectAsState()
+    val driverList by vm.driverList.collectAsState()
+    val selectedDriverName by vm.selectedDriverName.collectAsState()
+    val selectedEmployeeID by vm.selectedEmployeeID.collectAsState()
+    val expandedDriver by vm.expandedDriver.collectAsState()
+    val selectedType by vm.selectedType.collectAsState()
+    val expandedType by vm.expandedType.collectAsState()
+    val vehicleTypes = vm.vehicleTypes
 
-    // Load drivers (role == driver) retrieving name + employeeID
-    LaunchedEffect(Unit) {
-        FirebaseFirestore.getInstance()
-            .collection("users")
-            .whereEqualTo("role", "driver")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                driverList = snapshot.documents.mapNotNull { doc ->
-                    val name = doc.getString("name") ?: return@mapNotNull null
-                    val employeeID = doc.getString("employeeID") ?: return@mapNotNull null
-                    name to employeeID
-                }
-            }
-            .addOnFailureListener { driverList = emptyList() }
-    }
+    // Load drivers once
+    LaunchedEffect(Unit) { vm.loadDrivers() }
 
-    fun isValidPlateNumber(plate: String): Boolean =
-        plate.matches(Regex("^[A-Za-z]{1,3}[0-9]{1,4}$"))
-    val isPlateNumberValid = plateNumber.isBlank() || isValidPlateNumber(plateNumber)
+    val isPlateNumberValid = plateNumber.isBlank() || vm.isValidPlateNumber(plateNumber)
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .then(if (isLandscape) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         OutlinedTextField(
             value = plateNumber,
-            onValueChange = { plateNumber = it.uppercase() },
+            onValueChange = { vm.setPlateNumber(it) },
             label = { Text("Plate Number") },
             placeholder = { Text("e.g., A123 or ABC123") },
             isError = !isPlateNumberValid,
@@ -77,10 +70,10 @@ fun AddTransportationScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Driver dropdown (shows name but stores employeeID)
+        // Driver dropdown
         ExposedDropdownMenuBox(
             expanded = expandedDriver,
-            onExpandedChange = { expandedDriver = !expandedDriver }
+            onExpandedChange = { vm.toggleDriverExpanded() }
         ) {
             OutlinedTextField(
                 value = selectedDriverName,
@@ -92,15 +85,14 @@ fun AddTransportationScreen(
             )
             ExposedDropdownMenu(
                 expanded = expandedDriver,
-                onDismissRequest = { expandedDriver = false }
+                onDismissRequest = { vm.dismissDriverDropdown() }
             ) {
                 driverList.forEach { (name, employeeID) ->
                     DropdownMenuItem(
                         text = { Text(name) },
                         onClick = {
-                            selectedDriverName = name
-                            selectedEmployeeID = employeeID
-                            expandedDriver = false
+                            vm.selectDriver(name, employeeID)
+                            vm.dismissDriverDropdown()
                         }
                     )
                 }
@@ -110,7 +102,7 @@ fun AddTransportationScreen(
         // Vehicle type dropdown
         ExposedDropdownMenuBox(
             expanded = expandedType,
-            onExpandedChange = { expandedType = !expandedType }
+            onExpandedChange = { vm.toggleTypeExpanded() }
         ) {
             OutlinedTextField(
                 value = selectedType,
@@ -122,12 +114,12 @@ fun AddTransportationScreen(
             )
             ExposedDropdownMenu(
                 expanded = expandedType,
-                onDismissRequest = { expandedType = false }
+                onDismissRequest = { vm.dismissTypeDropdown() }
             ) {
                 vehicleTypes.forEach { type ->
                     DropdownMenuItem(
                         text = { Text(type) },
-                        onClick = { selectedType = type; expandedType = false }
+                        onClick = { vm.selectType(type); vm.dismissTypeDropdown() }
                     )
                 }
             }
@@ -138,7 +130,7 @@ fun AddTransportationScreen(
                 if (plateNumber.isNotBlank() &&
                     selectedDriverName.isNotBlank() &&
                     selectedEmployeeID.isNotBlank() &&
-                    isValidPlateNumber(plateNumber)
+                    vm.isValidPlateNumber(plateNumber)
                 ) {
                     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                     val newDelivery = Delivery(
@@ -159,7 +151,7 @@ fun AddTransportationScreen(
             enabled = plateNumber.isNotBlank() &&
                     selectedDriverName.isNotBlank() &&
                     selectedEmployeeID.isNotBlank() &&
-                    isValidPlateNumber(plateNumber)
+                    vm.isValidPlateNumber(plateNumber)
         ) { Text("Save") }
     }
 }
