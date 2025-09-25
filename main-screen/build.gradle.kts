@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.lottie.compose)
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     implementation(project(":core-resources"))
     implementation(project(":core-ui"))

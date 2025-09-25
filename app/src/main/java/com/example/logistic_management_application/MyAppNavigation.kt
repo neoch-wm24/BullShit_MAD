@@ -24,6 +24,7 @@ import com.example.main_screen.ui.ProfilePage
 import com.example.delivery_and_transportation_management.data.DeliveryViewModel
 import com.example.delivery_and_transportation_management.deliveryAndTransportationNavigation
 import com.example.main_screen.ui.HomePage
+import com.example.main_screen.ui.ReportPage
 import com.example.main_screen.viewmodel.AuthState
 import com.example.order_management.orderNavigation
 import com.example.user_management.userNavigation
@@ -121,6 +122,10 @@ fun MyAppNavigation(
                     authViewModel = authViewModel
                 )
             }
+            composable("report") {
+                ReportPage(navController = navController)
+            }
+
 
             userNavigation(navController)
 
